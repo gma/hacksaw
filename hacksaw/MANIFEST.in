@@ -4,3 +4,6 @@
 
 include AUTHORS
 include COPYING
+include src/regression.py
+include src/*_test.py
+include etc/hacksaw.conf
