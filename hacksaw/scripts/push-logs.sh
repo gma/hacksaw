@@ -37,9 +37,9 @@ function scp_file
 {
     local filename=$1
     local basename=$(basename $filename)
-    scp -Bq $filename $USERNAME@$REMOTEHOST:$REMOTEDIR/$basename.$COPY_EXT
+    scp -Bq $filename $USERNAME@$REMOTEHOST:/tmp/$basename.$COPY_EXT
     ssh $USERNAME@$REMOTEHOST \
-	"mv $REMOTEDIR/$basename.$COPY_EXT $REMOTEDIR/$basename"
+	"mv /tmp/$basename.$COPY_EXT $REMOTEDIR/$basename"
 }
 
 
