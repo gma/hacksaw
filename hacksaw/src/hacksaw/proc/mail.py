@@ -52,6 +52,7 @@ class Config(hacksaw.lib.Config):
     RECIPIENTS = 'recipients'
     SUBJECT = 'subject'
     MAIL_COMMAND = 'mailcommand'
+    MAX_MESSAGE_STORE = 'max_messagestore'
 
     def _get_message_store(self):
         return self._get_item(Config.MESSAGE_STORE)
@@ -81,6 +82,11 @@ class Config(hacksaw.lib.Config):
 
     mail_command = property(_get_mail_command)
 
+    def _get_max_message_store(self):
+        return int(self._get_item(Config.MAX_MESSAGE_STORE))
+
+    max_message_store = property(_get_max_message_store)
+
 
 class MessageSender(object):
 
@@ -107,12 +113,31 @@ class MessageSender(object):
 	message["From"] = self.config.sender
 	message["To"] = ', '.join(self.config.recipients)
 	message["Subject"] = self.config.subject
-	message.attach(self._get_log_attachment())
+        message.attach(self._get_log_attachment())
 	return message
-	
-    def send_message(self):
+
+    def send_message_too_large_error(self):
+	message = email.MIMEBase.MIMEBase('text', 'plain')
+	message.epilogue = "" # guarantees ends in new line
+	message["From"] = self.config.sender
+	message["To"] = ', '.join(self.config.recipients)
+	message["Subject"] = "Hacksaw error: Message store is too large"
+        message_str = message.as_string(unixfrom=0)
         fd = os.popen(self.config.mail_command, 'w')
-        fd.write(self._get_message().as_string(unixfrom=0))
+        fd.write(message_str)
+        rval = fd.close()
+        if rval is None:
+            pass
+        else:
+            sys.stderr.write('Error: sendmail returned %s\n' % rval)
+        return rval
+
+    def send_message(self):
+        message = self._get_message().as_string(unixfrom=0)
+        if len(message) > self.config.max_message_store * 1024:
+            return self.send_message_too_large_error()
+        fd = os.popen(self.config.mail_command, 'w')
+        fd.write(message)
         rval = fd.close()
         if rval is None:
             os.remove(self.config.message_store)
@@ -132,7 +157,7 @@ def main(argv=None):
         argv = sys.argv[1:]
     try:
         try:
-            config_file = sys.argv[1]
+            config_file = argv[0]
         except IndexError:
             raise Usage
         config = Config(config_file)
@@ -144,7 +169,3 @@ def main(argv=None):
     except Exception, e:
         print >>sys.stderr, e
     return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

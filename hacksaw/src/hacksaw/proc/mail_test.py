@@ -130,6 +130,12 @@ class ConfigTest(MailTest):
         self.append_to_file("mailcommand: %s" % sendmail)
         self.assertEqual(self.config.mail_command, sendmail)
 
+    def test_get_maximum_message_store_size(self):
+        """Check we can get the maximum message store size"""
+        max_message_store = 1024
+        self.append_to_file("max_messagestore: %s" % max_message_store)
+        self.assertEqual(self.config.max_message_store, max_message_store)
+
 
 class MessageSenderTest(MailTest):
     
@@ -170,6 +176,7 @@ class MessageSenderTest(MailTest):
 
     def test_use_correct_mail_command(self):
         """Check that the correct mail command is used to send mail"""
+        self.append_to_file("max_messagestore: 1")
         file_obj = Mock()
         file_obj.expects(once()).method("close")
         file_obj.expects(once()).method("write")
@@ -185,6 +192,7 @@ class MessageSenderTest(MailTest):
         
     def test_log_attachment(self):
         """Check that the log messages are attached to the mail"""
+        self.append_to_file("max_messagestore: 1")
         file_obj = Mock()
         file_obj.expects(once()).close()
         file_obj.expects(once()).write(
@@ -201,6 +209,7 @@ class MessageSenderTest(MailTest):
 
     def test_deletion(self):
         """Check message store deleted if mail sent"""
+        self.append_to_file("max_messagestore: 1")
         file_obj = Mock()
         file_obj.expects(once()).method("close").will(return_value(None))
         file_obj.expects(once()).write(
@@ -217,6 +226,7 @@ class MessageSenderTest(MailTest):
 
     def test_unsuccessful_send(self):
         """Check message store not deleted if mail not sent"""
+        self.append_to_file("max_messagestore: 1")
         file_obj = Mock()
         file_obj.expects(once()).method("close").will(return_value(1))
         file_obj.expects(once()).write(
@@ -233,6 +243,41 @@ class MessageSenderTest(MailTest):
         finally:
 	    self._remove_mock_pipe()
             sys.stderr = sys.__stderr__
+
+
+class SendErrorTest(MessageSenderTest):
+    
+    def _setup_mock_pipe(self, file_obj):
+        self.append_to_file('sender: wilber@cmedltd.com')
+        self.append_to_file('recipients: gteale@cmedltd.com')
+        self.append_to_file('subject: Hacksaw error: Message store too large')
+        self.append_to_file('mailcommand: /usr/lib/sendmail -t')
+        mock_os = Mock()
+        mock_os.expects(once()).popen(
+            eq('/usr/lib/sendmail -t'), eq('w')).will(return_value(file_obj))
+        
+        self.real_os = hacksaw.proc.mail.os
+        hacksaw.proc.mail.os = mock_os
+	return mock_os
+
+    def _remove_mock_pipe(self):
+	hacksaw.proc.mail.os = self.real_os
+
+    def test_message_store_too_large(self):
+        """Check error message is sent if message store too large"""
+        self.append_to_file("max_messagestore: 0")
+        file_obj = Mock()
+        file_obj.expects(once()).close()
+        file_obj.expects(once()).write(
+	    string_contains("Subject: Hacksaw error:"))
+	mock_os = self._setup_mock_pipe(file_obj)
+        try:
+            sender = hacksaw.proc.mail.MessageSender(self.config)
+            sender.send_message()
+	    file_obj.verify()
+            mock_os.verify()
+        finally:
+	    self._remove_mock_pipe()
 
 
 if __name__ == '__main__':
