@@ -15,7 +15,7 @@ class Config(object):
 
     def __init__(self, filename):
         if not os.path.exists(filename):
-            raise IOError, 'file not found: %s' % filename
+            raise IOError, "file not found: '%s'" % filename
         self.filename = filename
         self.parser = ConfigParser.SafeConfigParser()
         self.parser.read(filename)
@@ -32,20 +32,20 @@ class Config(object):
 
 class GeneralConfig(Config):
 
-    SPOOL_ITEM = 'spool'
-    PROCESSORS_ITEM = 'processors'
+    SPOOL = 'spool'
+    PROCESSORS = 'processors'
 
     def _get_section(self):
         return 'general'
 
     def _get_spool_directory(self):
-        return self._get_item(GeneralConfig.SPOOL_ITEM)
+        return self._get_item(GeneralConfig.SPOOL)
 
     spool_directory = property(_get_spool_directory)
 
     def _get_processors(self):
         return [word.strip() for word in
-                self._get_item(GeneralConfig.PROCESSORS_ITEM).split(',')]
+                self._get_item(GeneralConfig.PROCESSORS).split(',')]
 
     processors = property(_get_processors)
 
