@@ -28,7 +28,7 @@ def get_processors(config):
 
 def process_log_files(config):
     if not os.path.exists(config.spool_directory):
-        raise IOError, 'file not found: %s' % config.spool_directory
+        raise IOError, "file not found: '%s'" % config.spool_directory
     processors = get_processors(config)
     for log_file in os.listdir(config.spool_directory):
         for line in file(os.path.join(config.spool_directory, log_file)):
@@ -48,13 +48,13 @@ def main(argv=None):
         argv = sys.argv[1:]
     try:
         try:
-            opts, args = getopt.getopt(argv, "c")
+            opts, args = getopt.getopt(argv, "c:")
         except getopt.error, msg:
             raise Usage(msg)
         for opt, arg in opts:
             if opt == '-c':
                 config_file = arg
-        config = hacksaw.lib.GeneralConfig(config_path)
+        config = hacksaw.lib.GeneralConfig(config_file)
         process_log_files(config)
     except Usage, e:
         print >>sys.stderr, e.msg
