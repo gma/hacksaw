@@ -7,6 +7,7 @@ import errno
 import fcntl
 import os
 import re
+import sys
 import time
 
 import hacksaw.lib
@@ -113,7 +114,9 @@ class MessageSender(object):
         fd = os.popen(self.config.mail_command, 'w')
         fd.write(self._get_message().as_string(unixfrom=0))
         rval = fd.close()
-        if rval:
+        if rval is None:
+            os.remove(self.config.message_store)
+        else:
             sys.stderr.write('Error: sendmail returned %s\n' % rval)
         return rval
 
