@@ -22,13 +22,25 @@ class ConfigTest(unittest.TestCase):
     def write_file(self, lines):
         file(self.filename, 'w').write(lines)        
 
-    def test_spool_directory(self):
+    def test_missing_file(self):
+        """Check we raise a config error if there's no config file"""
+        self.assertRaises(IOError, hacksaw.Config, self.filename)
+
+    def test_get_spool_directory(self):
         """Check we can read the spool directory from the config file"""
         self.write_file('[general]\nspool: /var/spool/hacksaw')
         config = hacksaw.Config(self.filename)
         self.assertEqual(config.spool_directory, '/var/spool/hacksaw')
 
+    def test_get_processors(self):
+        """Check we can read the processors from the config file"""
+        self.write_file('[general]\nprocessors: EMail, SysLog')
+        config = hacksaw.Config(self.filename)
+        self.assertEqual(config.processors, ['EMail', 'SysLog'])
 
+    
+
+    
 if __name__ == '__main__':
     unittest.main()
     
