@@ -34,7 +34,8 @@ def process_log_files(config):
         for line in file(os.path.join(config.spool_directory, log_file)):
             for processor in processors:
                 processor.handle_message(line)
-            
+        os.remove(os.path.join(config.spool_directory, log_file))
+
 
 class Usage(Exception):
 
@@ -43,7 +44,7 @@ class Usage(Exception):
 
 
 def main(argv=None):
-    config_file = os.path.join('..', 'etc', 'hacksaw.conf')
+    config_file = os.path.join('/etc', 'hacksaw.conf')
     if argv is None:
         argv = sys.argv[1:]
     try:
