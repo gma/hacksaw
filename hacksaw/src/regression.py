@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 #
-# gregression.py - alternative unit testing script, useful during coding.
+# regression.py - alternative unit testing script, useful during coding.
 #
-# Runs all tests that it find beneath the current directory.
+# Runs all tests that it finds beneath the current directory.
 #
-# Usage: gregression.py [-q|-v]
+# Usage: regression.py [-q|-v]
 #
 # Options:
 #     -q  --  quiet (prints no output while running tests, only summary)
