@@ -12,10 +12,6 @@ import time
 import hacksaw.lib
 
 
-SENDMAIL = '/usr/lib/sendmail'
-SENDMAIL_OPTS = '-t'
-
-
 class Processor(hacksaw.lib.Processor):
 
     LOCK_TIMEOUT = 5
