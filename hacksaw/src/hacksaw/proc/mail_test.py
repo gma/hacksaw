@@ -44,7 +44,6 @@ class ProcessorTest(MailTest):
         file_obj = processor.acquire_lock()
         self.assertNotEqual(file_obj, None)
         code = """
-import fcntl
 import sys
 
 import hacksaw.proc.mail
