@@ -14,6 +14,7 @@ setup(name="hacksaw",
       description="Log file monitoring and alerting",
       package_dir={"": "src"},
       packages=["hacksaw", "hacksaw.proc"],
-      scripts=["src/processlogs.py", "scripts/push-logs.sh"],
+      scripts=["src/processlogs.py", "src/run-processor.py",
+               "scripts/push-logs.sh"],
       data_files=[("etc", ["etc/hacksaw.conf"])],
       )
