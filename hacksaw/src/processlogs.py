@@ -20,7 +20,9 @@ def get_processors(config):
         except ImportError, e:
             sys.stderr.write('Error: %s' % e)
         else:
-            instances.append(sys.modules[proc].Processor())
+            module = sys.modules[proc]
+            proc_config = module.Config(config.filename)
+            instances.append(module.Processor(proc_config))
     return instances
 
 
@@ -52,7 +54,7 @@ def main(argv=None):
         for opt, arg in opts:
             if opt == '-c':
                 config_file = arg
-        config = hacksaw.lib.Config(config_path)
+        config = hacksaw.lib.GeneralConfig(config_path)
         process_log_files(config)
     except Usage, e:
         print >>sys.stderr, e.msg

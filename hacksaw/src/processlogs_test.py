@@ -13,26 +13,26 @@ import hacksaw.lib
 import processlogs
 
 
-class ProcessTest(unittest.TestCase):
+class ProcessorTest(unittest.TestCase):
 
     SPOOL_DIR = './test-spool'
-    CONF_FILE = './test.conf'
-
+    filename = './test.conf'
 
     def append_to_file(self, line):
-        file(self.CONF_FILE, 'a').write(line)
-        self.config = hacksaw.lib.Config(self.CONF_FILE)
+        file(self.filename, 'a').write(line)
+        self.config = hacksaw.lib.GeneralConfig(self.filename)
         
     def setUp(self):
-        assert not os.path.exists(self.CONF_FILE)
+        if os.path.exists(self.filename):
+            os.remove(self.filename)
         self.append_to_file('[general]\nspool: %s\n' % self.SPOOL_DIR)
 
     def tearDown(self):
-        if os.path.exists(self.CONF_FILE):
-            os.remove(self.CONF_FILE)
+        if os.path.exists(self.filename):
+            os.remove(self.filename)
 
 
-class NoSpoolDirTest(ProcessTest):
+class NoSpoolDirTest(ProcessorTest):
 
     SPOOL_DIR = '/no/such/directory'
 
@@ -41,38 +41,60 @@ class NoSpoolDirTest(ProcessTest):
         self.assertRaises(IOError, processlogs.process_log_files, self.config)
 
 
-class SingleProcessorTest(ProcessTest):
+class SingleProcessorTest(ProcessorTest):
 
     def setUp(self):
-        ProcessTest.setUp(self)
-        self.append_to_file("processors: hacksaw.proc.email\n")
+        ProcessorTest.setUp(self)
+        self.append_to_file("processors: hacksaw.proc.test\n")
 
     def test_get_one_processor(self):
         """Check we can get a single processor"""
-        processors = processlogs.get_processors(self.config)
-        self.assertEquals(len(processors), 1)
-        self.assert_(isinstance(processors[0], hacksaw.proc.email.Processor))
+        try:
+            module = Mock()
+            config = Mock()
+            module.expects(
+                once()).Config(eq(self.filename)).will(return_value(config))
+            module.expects(once()).Processor(eq(config))
+            sys.modules['hacksaw.proc.test'] = module
+            processors = processlogs.get_processors(self.config)
+            self.assertEquals(len(processors), 1)
+            module.verify()
+        finally:
+            del sys.modules['hacksaw.proc.test']
 
 
-class MultipleProcessorTest(ProcessTest):
+class MultipleProcessorTest(ProcessorTest):
 
     def setUp(self):
-        ProcessTest.setUp(self)
+        ProcessorTest.setUp(self)
         self.append_to_file(
-            "processors: hacksaw.proc.email, hacksaw.proc.syslog\n")
+            "processors: hacksaw.proc.test1, hacksaw.proc.test2\n")
     
     def test_get_two_processors(self):
         """Check we can get multiple processors"""
-        processors = processlogs.get_processors(self.config)
-        self.assertEquals(len(processors), 2)
-        self.assert_(isinstance(processors[0], hacksaw.proc.email.Processor))
-        self.assert_(isinstance(processors[1], hacksaw.proc.syslog.Processor))
+        try:
+            module = Mock()
+            config = Mock()
+            module.expects(
+                once()).Config(eq(self.filename)).will(return_value(config))
+            module.expects(once()).Processor(eq(config))
+            module.expects(
+                once()).Config(eq(self.filename)).will(return_value(config))
+            module.expects(once()).Processor(eq(config))
+            sys.modules['hacksaw.proc.test1'] = module
+            sys.modules['hacksaw.proc.test2'] = module
+            processors = processlogs.get_processors(self.config)
+            self.assertEquals(len(processors), 2)
+            module.verify()
+        finally:
+            del sys.modules['hacksaw.proc.test1']
+            del sys.modules['hacksaw.proc.test2']
 
 
-class MissingProcessorTest(ProcessTest):
+class MissingProcessorTest(ProcessorTest):
 
     def setUp(self):
-        ProcessTest.setUp(self)
+        ProcessorTest.setUp(self)
         self.append_to_file(
             "processors: missing.processor\n")
 
@@ -87,7 +109,7 @@ class MissingProcessorTest(ProcessTest):
             sys.stderr = sys.__stderr__
 
 
-class FilesTest(ProcessTest):
+class UseProcessorsTest(ProcessorTest):
 
     def mock_get_processors(self, config):
         self.processor = Mock()
@@ -95,23 +117,23 @@ class FilesTest(ProcessTest):
         return [self.processor]
 
     def make_log_file(self):
-        if os.path.exists(FilesTest.SPOOL_DIR):
-            shutil.rmtree(FilesTest.SPOOL_DIR)
-        os.mkdir(FilesTest.SPOOL_DIR)
-        log = file(os.path.join(FilesTest.SPOOL_DIR, 'test.log'), 'w')
+        if os.path.exists(UseProcessorsTest.SPOOL_DIR):
+            shutil.rmtree(UseProcessorsTest.SPOOL_DIR)
+        os.mkdir(UseProcessorsTest.SPOOL_DIR)
+        log = file(os.path.join(UseProcessorsTest.SPOOL_DIR, 'test.log'), 'w')
         log.write('Message 1')
         log.close()
         
     def setUp(self):
         self.real_func = processlogs.get_processors
         processlogs.get_processors = self.mock_get_processors
-        ProcessTest.setUp(self)
+        ProcessorTest.setUp(self)
         self.make_log_file()
 
     def tearDown(self):
         processlogs.get_processors = self.real_func
-        ProcessTest.tearDown(self)
-        shutil.rmtree(FilesTest.SPOOL_DIR)
+        ProcessorTest.tearDown(self)
+        shutil.rmtree(UseProcessorsTest.SPOOL_DIR)
 
     def test_single_file(self):
         """Check the processors are run on each spooled log message"""
@@ -121,4 +143,3 @@ class FilesTest(ProcessTest):
 
 if __name__ == '__main__':
     unittest.main()
-    
