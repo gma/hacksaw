@@ -83,8 +83,8 @@ function push_log
 	return
     fi
     if file_too_large $log_file; then
-	mv $log_file $log_file.$HOLD_EXT
 	send_error_message $log_file
+	mv $log_file $log_file.$HOLD_EXT
 	return
     elif [ -s $log_file ]; then
 	scp_file $log_file
