@@ -2,6 +2,7 @@
 # (C) Cmed Ltd, 2004
 
 
+import email.MIMEText
 import errno
 import fcntl
 import os
@@ -49,14 +50,21 @@ class Processor(hacksaw.lib.Processor):
 
 class Config(hacksaw.lib.Config):
 
-    MAIL_COMMAND = 'mailcommand'
     MESSAGE_STORE = 'messagestore'
+    SENDER = 'sender'
     RECIPIENTS = 'recipients'
+    SUBJECT = 'subject'
+    MAIL_COMMAND = 'mailcommand'
 
     def _get_message_store(self):
         return self._get_item(Config.MESSAGE_STORE)
 
     message_store = property(_get_message_store)
+
+    def _get_sender(self):
+        return self._get_item(Config.SENDER)
+
+    sender = property(_get_sender)
 
     def _get_recipients(self):
         recipients = []
@@ -65,6 +73,11 @@ class Config(hacksaw.lib.Config):
         return recipients
 
     recipients = property(_get_recipients)
+
+    def _get_subject(self):
+        return self._get_item(Config.SUBJECT)
+
+    subject = property(_get_subject)
 
     def _get_mail_command(self):
         return self._get_item(Config.MAIL_COMMAND)
@@ -84,12 +97,25 @@ class MessageSender(object):
                 return False
         return True
 
-    def _get_message_text(self):
-        return ""
-    
-    def send_message(self): #, message_text):
+    def _get_log_attachment(self):
+	log_messages = file(self.config.message_store, "r").read()
+	message = email.MIMEText.MIMEText(log_messages)
+	message.add_header('Content-Disposition', 'attachment',
+                           filename='logs.txt')
+	return message
+	 
+    def _get_message(self):
+	message = email.MIMEBase.MIMEBase('multipart', 'mixed')
+	message.epilogue = "" # guarantees ends in new line
+	message["From"] = self.config.sender
+	message["To"] = ', '.join(self.config.recipients)
+	message["Subject"] = self.config.subject
+	message.attach(self._get_log_attachment())
+	return message
+	
+    def send_message(self):
         fd = os.popen(self.config.mail_command, 'w')
-        fd.write(self._get_message_text())
+        fd.write(self._get_message().as_string(unixfrom=0))
         rval = fd.close()
         if rval:
             sys.stderr.write('Error: sendmail returned %s\n' % rval)
