@@ -5,10 +5,14 @@
 import os
 import unittest
 
-import hacksaw
+import hacksaw.lib
 
 
 class ConfigTest(unittest.TestCase):
+
+    def append_to_file(self, line):
+        file(self.filename, 'a').write(line + '\n')
+        self.config = hacksaw.lib.Config(self.filename)
 
     def setUp(self):
         self.filename = 'test.conf'
@@ -19,27 +23,23 @@ class ConfigTest(unittest.TestCase):
         if os.path.exists(self.filename):
             os.remove(self.filename)
 
-    def write_file(self, lines):
-        file(self.filename, 'w').write(lines)        
-
     def test_missing_file(self):
         """Check we raise a config error if there's no config file"""
-        self.assertRaises(IOError, hacksaw.Config, self.filename)
+        self.assertRaises(IOError, hacksaw.lib.Config, self.filename)
 
     def test_get_spool_directory(self):
         """Check we can read the spool directory from the config file"""
-        self.write_file('[general]\nspool: /var/spool/hacksaw')
-        config = hacksaw.Config(self.filename)
-        self.assertEqual(config.spool_directory, '/var/spool/hacksaw')
+        self.append_to_file('[general]')
+        self.append_to_file('spool: /var/spool/hacksaw')
+        self.assertEqual(self.config.spool_directory, '/var/spool/hacksaw')
 
     def test_get_processors(self):
         """Check we can read the processors from the config file"""
-        self.write_file('[general]\nprocessors: EMail, SysLog')
-        config = hacksaw.Config(self.filename)
-        self.assertEqual(config.processors, ['EMail', 'SysLog'])
-
-    
-
+        self.append_to_file('[general]')
+        self.append_to_file(
+            'processors: hacksaw.proc.email, hacksaw.proc.syslog')
+        self.assertEqual(self.config.processors, ['hacksaw.proc.email',
+                                                  'hacksaw.proc.syslog'])
     
 if __name__ == '__main__':
     unittest.main()

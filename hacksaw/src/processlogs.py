@@ -9,12 +9,19 @@ import getopt
 import os
 import sys
 
-import hacksaw
+import hacksaw.lib
 
 
 def get_processors(config):
-    cls = getattr(hacksaw, config.processors + 'Processor')
-    return [cls()]
+    instances = []
+    for proc in config.processors:
+        try:
+            __import__(proc)
+        except ImportError, e:
+            sys.stderr.write('Error: %s' % e)
+        else:
+            instances.append(sys.modules[proc].Processor())
+    return instances
 
 
 def process_log_files(config):
@@ -27,9 +34,10 @@ def process_log_files(config):
                 processor.handle_message(line)
             
 
-class Usage(RuntimeError):
+class Usage(Exception):
 
-    pass
+    def __init__(self, msg):
+        self.msg = msg
 
 
 def main(argv=None):
@@ -44,7 +52,7 @@ def main(argv=None):
         for opt, arg in opts:
             if opt == '-c':
                 config_file = arg
-        config = hacksaw.Config(config_path)
+        config = hacksaw.lib.Config(config_path)
         process_log_files(config)
     except Usage, e:
         print >>sys.stderr, e.msg

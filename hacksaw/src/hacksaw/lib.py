@@ -35,10 +35,9 @@ class Config(object):
     spool_directory = property(_get_spool_directory)
 
     def _get_processors(self):
-        return self._get_general_item(Config.PROCESSORS_ITEM)
+        return [word.strip() for word in
+                self._get_general_item(Config.PROCESSORS_ITEM).split(',')]
 
     processors = property(_get_processors)
 
 
-class EMailProcessor(object):
-    pass
