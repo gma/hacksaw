@@ -6,7 +6,7 @@ from distutils.core import setup
 
 
 setup(name="hacksaw",
-      version="0.1.0",
+      version="0.1.1",
       author="Cmed Technology",
       author_email="developers@cmedltd.com",
       url="http://hacksaw.sourceforge.net/",
