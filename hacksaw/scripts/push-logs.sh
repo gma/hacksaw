@@ -6,66 +6,119 @@
 # (C) Cmed Ltd, 2004
 
 
-SYSLOG=syslog  # a pattern that matches process name, not the actual name
+USERNAME=root
+REMOTEDIR=/var/spool/hacksaw
+LOCALDIR=/var/spool/hacksaw
+MAXSIZE=""  # maximum size of file to copy in kilobytes
+
+AWK=/usr/bin/awk
+COPY_EXT="copying"
+HOLD_EXT="onhold"
 
 
-function usage()
+function usage
 {
-    echo "Usage: $(basename $0) [-u username] [-d remotedir]" \
-	"[-l (logfile|logdir)] hostname" 1>&2
+    cat <<EOF 1>&2
+Usage: $(basename $0) [OPTIONS] hostname
+
+OPTIONS
+
+    -u username		Remote user name (root)
+    -d remotedir	Remote spool directory ($REMOTEDIR)
+    -l localdir	        Local log file directory ($LOCALDIR)
+    -k kilobytes	Max size of log file (optional)
+
+EOF
+    exit 1
 }
 
 
-function push_log()
+function scp_file
+{
+    local filename=$1
+    local basename=$(basename $filename)
+    scp -Bq $filename $USERNAME@$REMOTEHOST:$REMOTEDIR/$basename.$COPY_EXT
+    ssh $USERNAME@$REMOTEHOST \
+	"mv $REMOTEDIR/$basename.$COPY_EXT $REMOTEDIR/$basename"
+}
+
+
+function get_file_size
+{
+    local filename=$1
+    ls -lk $filename | $AWK '{ print $5 }'
+}
+
+
+function file_too_large
+{
+    local filename=$1
+    local kbytes=$(get_file_size $filename)
+    if [ -n "$MAXSIZE" ]; then
+	[ $kbytes -gt $MAXSIZE ]
+    else
+	return 1
+    fi
+}
+
+
+function send_error_message
 {
     local log_file=$1
-    local remote_host=$2
-    local login=$3
-    local remotedir=$4
+    local lines=$(wc -l $log_file | $AWK '{ print $1 }')
+    local kbytes=$(get_file_size $log_file)
+    local msg_file=$(tempfile)
+    local msg="ERROR: log file too large "
+    msg="$msg ($(basename $log_file): $lines lines, $kbytes kB)"
+    echo "$(date "+%b %e %T") $(hostname) $(basename $0)[$$]: $msg" > $msg_file
+    scp_file $msg_file
+    rm -f $msg_file
+}
+
+
+function push_log
+{
+    local log_file=$1
     if [ ! -f $log_file ]; then
 	return
     fi
-    timestamp=$(date -u +%Y%m%d-%H%M%S)
-    log_name=$(hostname)-$(basename $log_file)-$timestamp
-    temp_file=$(tempfile)
-    mv $log_file $temp_file
-    pkill -HUP -f $SYSLOG
-    if [ -s $temp_file ]; then
-	scp -Bq $temp_file $login@$remote_host:$remotedir/$log_name.copy
-	ssh $login@$remote_host \
-            "mv $remotedir/$log_name.copy $remotedir/$log_name"
+    if file_too_large $log_file; then
+	mv $log_file $log_file.$HOLD_EXT
+	send_error_message $log_file
+	return
+    elif [ -s $log_file ]; then
+	scp_file $log_file
     fi
-    rm $temp_file
+    rm $log_file
 }
 
 
+[ -n "$DEBUG" ] && set -x
 set -e
 
-log_path=$(pwd)
-login=root
-remotedir=/var/spool
 # Process command line args
-while getopts ":u:d:l:" opt; do
+while getopts ":u:d:l:k:" opt; do
     case $opt in
-	l ) log_path=$OPTARG
+	u ) USERNAME=$OPTARG
 	    ;;
-	u ) login=$OPTARG
+	d ) REMOTEDIR=$OPTARG
 	    ;;
-	d ) remotedir=$OPTARG
+	l ) LOCALDIR=$OPTARG
+	    ;;
+	k ) MAXSIZE=$OPTARG
 	    ;;
     esac
 done
 shift $(($OPTIND - 1))
-if [ $# -ne 1 ]; then
-     usage
-     exit 1
-fi
-remote_host=$1
 
-if [ -d $log_path ]; then
-    for log_file in $(ls $log_path); do
-        push_log $log_path/$log_file $remote_host $login $remotedir
-    done
-else
-    push_log $log_path $remote_host $login $remotedir
-fi
+REMOTEHOST=$1
+[ -z $REMOTEHOST ] && usage
+
+files=$(find $LOCALDIR \
+    -type f ! \
+    -regex ".*\.\($COPY_EXT\|$HOLD_EXT\)" \
+    -maxdepth 1)
+
+for log_file in $files; do
+    push_log $log_file
+done
