@@ -18,8 +18,8 @@ class ConfigTest(unittest.TestCase):
 
     def setUp(self):
         self.filename = 'test.conf'
-        assert not os.path.exists(self.filename), \
-               'Please move %s out of the way' % self.filename
+        if os.path.exists(self.filename):
+            os.remove(self.filename)
 
     def tearDown(self):
         if os.path.exists(self.filename):

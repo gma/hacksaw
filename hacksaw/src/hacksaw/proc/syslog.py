@@ -2,6 +2,14 @@
 # (C) Cmed Ltd, 2004
 
 
-class Processor(object):
+import hacksaw.lib
+
+
+class Processor(hacksaw.lib.Processor):
+
+    pass
+
+
+class Config(hacksaw.lib.Config):
 
     pass

@@ -16,6 +16,7 @@ class Config(object):
     def __init__(self, filename):
         if not os.path.exists(filename):
             raise IOError, 'file not found: %s' % filename
+        self.filename = filename
         self.parser = ConfigParser.SafeConfigParser()
         self.parser.read(filename)
 
@@ -49,3 +50,10 @@ class GeneralConfig(Config):
     processors = property(_get_processors)
 
 
+class Processor(object):
+
+    def __init__(self, config):
+        self.config = config
+
+    def handle_message(self, message):
+        raise NotImplementedError
