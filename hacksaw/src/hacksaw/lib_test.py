@@ -10,9 +10,11 @@ import hacksaw.lib
 
 class ConfigTest(unittest.TestCase):
 
+    config_cls = None
+
     def append_to_file(self, line):
         file(self.filename, 'a').write(line + '\n')
-        self.config = hacksaw.lib.Config(self.filename)
+        self.config = self.config_cls(self.filename)
 
     def setUp(self):
         self.filename = 'test.conf'
@@ -23,9 +25,14 @@ class ConfigTest(unittest.TestCase):
         if os.path.exists(self.filename):
             os.remove(self.filename)
 
+
+class GeneralConfigTest(ConfigTest):
+
+    config_cls = hacksaw.lib.GeneralConfig
+
     def test_missing_file(self):
         """Check we raise a config error if there's no config file"""
-        self.assertRaises(IOError, hacksaw.lib.Config, self.filename)
+        self.assertRaises(IOError, hacksaw.lib.GeneralConfig, self.filename)
 
     def test_get_spool_directory(self):
         """Check we can read the spool directory from the config file"""
@@ -43,4 +50,3 @@ class ConfigTest(unittest.TestCase):
     
 if __name__ == '__main__':
     unittest.main()
-    
