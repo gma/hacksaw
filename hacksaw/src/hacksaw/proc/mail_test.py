@@ -94,7 +94,8 @@ else:
         try:
             processor = hacksaw.proc.mail.Processor(self.config)
             processor.acquire_lock = acquire_func
-            self.assertRaises(IOError, processor.handle_message, "Test message")
+            self.assertRaises(IOError, processor.handle_message,
+                              "Test message")
         finally:
             hacksaw.proc.mail.time = real_time
        
