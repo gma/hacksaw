@@ -34,7 +34,7 @@ servers.
 The format of the UDP packets sent by netsyslog adheres closely to
 that defined in RFC 3164.
 
-For more information see http://hacksaw.sourceforge.net/netsyslog/
+For more information see http://hacksaw.sourceforge.net/netsyslog/.
 
 """
 
@@ -50,7 +50,15 @@ import time
 
 class PriPart(object):
 
+    """The PRI part of the message (see RFC 3164)."""
+
     def __init__(self, facility, severity):
+        """Initialise the object, specifying facility and severity.
+
+        Specify the arguments using constants from the syslog module
+        (e.g. syslog.LOG_USER, syslog.LOG_INFO).
+
+        """
         assert facility is not None
         assert severity is not None
         self.facility = facility
@@ -62,6 +70,13 @@ class PriPart(object):
 
 
 class HeaderPart(object):
+
+    """The HEADER part of the message
+
+    The HEADER contains a timestamp (that MUST be formatted according
+    to the specification and a hostname field).
+
+    """
 
     def __init__(self, timestamp=None, hostname=None):
         self.timestamp = timestamp
@@ -94,7 +109,13 @@ class HeaderPart(object):
             value = self.calculate_current_timestamp()
         self._timestamp = value
 
-    timestamp = property(_get_timestamp, _set_timestamp)
+    timestamp = property(_get_timestamp, _set_timestamp, None,
+                         """The local time when the message was written.
+
+                         Must follow the format 'Mmm DD HH:MM:SS'.  If
+                         the day of the month is less than 10, then it
+                         MUST be represented as a space and then the
+                         number.""")
 
     def _get_hostname(self):
         return self._hostname
@@ -104,7 +125,14 @@ class HeaderPart(object):
             value = socket.gethostname()
         self._hostname = value
 
-    hostname = property(_get_hostname, _set_hostname)
+    hostname = property(_get_hostname, _set_hostname, None,
+                        """The hostname where the log message was created.
+
+                        Should be the first part of the hostname, or
+                        an IP address. Should NOT be set to a fully
+                        qualified domain name.
+
+                        """)
 
 
 class MsgPart(object):
