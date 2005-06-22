@@ -5,8 +5,7 @@ REMOTE_HOST=hacksaw.sourceforge.net
 REMOTE_DIR=/home/groups/h/ha/hacksaw/htdocs
 REMOTE_USER=ashtong
 
-
-upload: .upload-root .upload-news .upload-ssi .upload-images
+upload: .upload-root .upload-news .upload-netsyslog .upload-ssi .upload-images
 #	.upload-screenshots
 
 
@@ -16,19 +15,25 @@ upload: .upload-root .upload-news .upload-ssi .upload-images
 
 
 .upload-news: news/*.html
-# 	ssh $(REMOTE_USER)@$(REMOTE_HOST) mkdir -p $(REMOTE_DIR)/news
+#	ssh $(REMOTE_USER)@$(REMOTE_HOST) mkdir -p $(REMOTE_DIR)/news
 	scp $? $(REMOTE_USER)@$(REMOTE_HOST):$(REMOTE_DIR)/news
 	@touch .upload-news
 
 
+.upload-netsyslog: netsyslog/*.html
+#	ssh $(REMOTE_USER)@$(REMOTE_HOST) mkdir -p $(REMOTE_DIR)/netsyslog
+	scp $? $(REMOTE_USER)@$(REMOTE_HOST):$(REMOTE_DIR)/netsyslog
+	@touch .upload-netsyslog
+
+
 .upload-ssi: ssi/*.html
-# 	ssh $(REMOTE_USER)@$(REMOTE_HOST) mkdir -p $(REMOTE_DIR)/ssi
+#	ssh $(REMOTE_USER)@$(REMOTE_HOST) mkdir -p $(REMOTE_DIR)/ssi
 	scp $? $(REMOTE_USER)@$(REMOTE_HOST):$(REMOTE_DIR)/ssi
 	@touch .upload-ssi
 
 
 .upload-images: images/*.png
-# 	ssh $(REMOTE_USER)@$(REMOTE_HOST) mkdir -p $(REMOTE_DIR)/images
+#	ssh $(REMOTE_USER)@$(REMOTE_HOST) mkdir -p $(REMOTE_DIR)/images
 	scp $? $(REMOTE_USER)@$(REMOTE_HOST):$(REMOTE_DIR)/images
 	@touch .upload-images
 
