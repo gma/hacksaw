@@ -1,4 +1,5 @@
 # Copyright (C) 2005 Graham Ashton <ashtong@users.sourceforge.net>
+#
 # $Id$
 
 
