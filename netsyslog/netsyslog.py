@@ -20,20 +20,21 @@
 
 """send log messages to remote syslog server
 
+netsyslog enables you to construct syslog messages and send them (via
+UDP) to a remote syslog server directly from Python. Unlike other
+syslog modules it allows you to set the metadata (e.g. time, host
+name, program name, etc.) yourself, giving you full control over the
+contents of the UDP packets that it creates.
 
+The module also allows you to send log messages that contain the
+current time, local hostname and calling program name (i.e. the
+typical requirement of a logging package) to one or more syslog
+servers.
 
-This module provides classes for constructing UDP packets that can be
-sent to a remote syslog server. It attempts to follow the protocol
-defined in RFC 3164.
+The format of the UDP packets sent by netsyslog adheres closely to
+that defined in RFC 3164.
 
-The classes and attributes are named according to the terminology in
-the RFC. In the absence of full documentation for this module you
-should be able to read the RFC to work out how the code is
-structured. If you are interested in sending syslog messages to a
-remote server you shouldn't need to look any further than the Logger
-class.
-
-For more information see http://hacksaw.sourceforge.net/remotesyslog/
+For more information see http://hacksaw.sourceforge.net/netsyslog/
 
 """
 
