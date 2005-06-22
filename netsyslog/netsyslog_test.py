@@ -1,7 +1,24 @@
 # Copyright (C) 2005 Graham Ashton <ashtong@users.sourceforge.net>
+#
+# This module is free software, and you may redistribute it and/or modify
+# it under the same terms as Python itself, so long as this copyright message
+# and disclaimer are retained in their original form.
+#
+# IN NO EVENT SHALL THE AUTHOR BE LIABLE TO ANY PARTY FOR DIRECT, INDIRECT,
+# SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OF
+# THIS CODE, EVEN IF THE AUTHOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH
+# DAMAGE.
+#
+# THE AUTHOR SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+# PARTICULAR PURPOSE.  THE CODE PROVIDED HEREUNDER IS ON AN "AS IS" BASIS,
+# AND THERE IS NO OBLIGATION WHATSOEVER TO PROVIDE MAINTENANCE,
+# SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#
 # $Id$
 
 
+import copy
 import os
 import socket
 import sys
@@ -134,7 +151,7 @@ class MsgPartTest(MockMsgTest):
         msg = netsyslog.MsgPart(content=" hello")
         self.assertEqual(str(msg), "%s hello" % DEFAULT_TAG)
 
-    def test_inclusion_of_pid(self):
+    def test_include_pid(self):
         """Check the program's pid can be included in CONTENT"""
         msg = netsyslog.MsgPart(content="hello")
         msg.include_pid()
@@ -146,13 +163,11 @@ DEFAULT_HEADER = netsyslog.HeaderPart(DEFAULT_TIMESTAMP, DEFAULT_HOSTNAME)
 DEFAULT_MSG = netsyslog.MsgPart(DEFAULT_TAG, "hello")
 
 
-class SyslogMessageTest(unittest.TestCase):
+class MessageTest(unittest.TestCase):
 
     def test_message_format(self):
         """Check syslog message is correctly constructed"""
-        message = netsyslog.SyslogMessage(DEFAULT_PRI,
-                                          DEFAULT_HEADER,
-                                          DEFAULT_MSG)
+        message = netsyslog.Message(DEFAULT_PRI, DEFAULT_HEADER, DEFAULT_MSG)
         header = " ".join((DEFAULT_TIMESTAMP, DEFAULT_HOSTNAME))
         start_of_message = "<165>%s %s" % (header, DEFAULT_TAG)
         self.assert_(str(message).startswith(start_of_message))
@@ -160,48 +175,84 @@ class SyslogMessageTest(unittest.TestCase):
     def test_max_lenth(self):
         """Check that no syslog message is longer than 1024 bytes"""
         message = "a" * 2048
-        message = netsyslog.SyslogMessage(DEFAULT_PRI, DEFAULT_HEADER, message)
-        self.assertEqual(len(str(message)), netsyslog.SyslogMessage.MAX_LEN)
+        message = netsyslog.Message(DEFAULT_PRI, DEFAULT_HEADER, message)
+        self.assertEqual(len(str(message)), netsyslog.Message.MAX_LEN)
 
 
 class LoggerTest(MockHeaderTest, MockMsgTest):
 
+    def mock_socket(self, family, proto):
+        return self.mock_sock
+        
     def setUp(self):
         MockHeaderTest.setUp(self)
         MockMsgTest.setUp(self)
+        self.mock_sock = Mock()
+        self.real_socket = socket.socket
+        socket.socket = self.mock_socket
 
     def tearDown(self):
+        socket.socket = self.real_socket
         MockMsgTest.tearDown(self)
         MockHeaderTest.tearDown(self)
         
     def test_send_message(self):
-        """Check we can send a simple message via UDP"""
+        """Check we can send a message via UDP"""
+        logger = netsyslog.Logger()
+
+        message = netsyslog.Message(DEFAULT_PRI, DEFAULT_HEADER, DEFAULT_MSG)
         hostname = "localhost"
-        message = netsyslog.SyslogMessage(DEFAULT_PRI,
-                                          DEFAULT_HEADER,
-                                          DEFAULT_MSG)
-        mock_sock = Mock()
-        port = netsyslog.Logger.PORT
-        mock_sock.expects(once()).send(eq(str(message)))
-        mock_sock.expects(once()).connect(eq((hostname, port)))
+        address = (hostname, netsyslog.Logger.PORT)
+        self.mock_sock.expects(once()).sendto(eq(str(message)), eq(address))
+        logger.add_host(hostname)
 
-        def mock_socket(family, proto):
-            return mock_sock
-        
-        real_socket = socket.socket
-        socket.socket = mock_socket
-        try:
-            logger = netsyslog.Logger()
-            logger.add_host("localhost")
-            logger.log(syslog.LOG_LOCAL4, syslog.LOG_NOTICE, "hello")
-            mock_sock.verify()
-        finally:
-            socket.socket = real_socket
-        
+        hostname = "remotehost"
+        address = (hostname, netsyslog.Logger.PORT)
+        self.mock_sock.expects(once()).sendto(eq(str(message)), eq(address))
+        logger.add_host(hostname)
 
-# sending messages to multiple hosts
-# including the pid in the message
-# sending messages constructed by hand
+        logger.log(syslog.LOG_LOCAL4, syslog.LOG_NOTICE, "hello")
+        self.mock_sock.verify()
+
+    def test_remove_host(self):
+        """Check host can be removed from list of those receiving messages"""
+        hostname = "localhost"
+        logger = netsyslog.Logger()
+        logger.add_host(hostname)
+        logger.remove_host(hostname)
+        logger.log(syslog.LOG_LOCAL4, syslog.LOG_NOTICE, "hello")
+        self.mock_sock.verify()
+
+    def test_include_pid(self):
+        """Check the program's pid can be included in a log message"""
+        msg_with_pid = copy.copy(DEFAULT_MSG)
+        msg_with_pid.include_pid()
+        message = netsyslog.Message(DEFAULT_PRI, DEFAULT_HEADER, msg_with_pid)
+        hostname = "localhost"
+        address = (hostname, netsyslog.Logger.PORT)
+        self.mock_sock.expects(once()).sendto(eq(str(message)), eq(address))
+        
+        logger = netsyslog.Logger()
+        logger.include_pid()
+        logger.add_host(hostname)
+        logger.log(syslog.LOG_LOCAL4, syslog.LOG_NOTICE, "hello")
+        self.mock_sock.verify()
+
+    def test_send_messages_by_hand(self):
+        """Check we can send a hand crafted log message"""
+        hostname = "localhost"
+        address = (hostname, netsyslog.Logger.PORT)
+        message_text = "<165>Jan  1 10:00:00 myhost myprog: hello"
+        self.mock_sock.expects(once()).sendto(eq(message_text), eq(address))
+
+        pri = netsyslog.PriPart(syslog.LOG_LOCAL4, syslog.LOG_NOTICE)
+        header = netsyslog.HeaderPart("Jan  1 10:00:00", "myhost")
+        msg = netsyslog.MsgPart("myprog", "hello")
+        message = netsyslog.Message(pri, header, msg)
+        logger = netsyslog.Logger()
+        logger.add_host(hostname)
+        logger.send_message(message)
+        self.mock_sock.verify()
     
 
 if __name__ == "__main__":

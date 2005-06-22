@@ -1,8 +1,26 @@
 # Copyright (C) 2005 Graham Ashton <ashtong@users.sourceforge.net>
+#
+# This module is free software, and you may redistribute it and/or modify
+# it under the same terms as Python itself, so long as this copyright message
+# and disclaimer are retained in their original form.
+#
+# IN NO EVENT SHALL THE AUTHOR BE LIABLE TO ANY PARTY FOR DIRECT, INDIRECT,
+# SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OF
+# THIS CODE, EVEN IF THE AUTHOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH
+# DAMAGE.
+#
+# THE AUTHOR SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+# PARTICULAR PURPOSE.  THE CODE PROVIDED HEREUNDER IS ON AN "AS IS" BASIS,
+# AND THERE IS NO OBLIGATION WHATSOEVER TO PROVIDE MAINTENANCE,
+# SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#
 # $Id$
 
 
-"""send messages to a remote syslog server
+"""send log messages to remote syslog server
+
+
 
 This module provides classes for constructing UDP packets that can be
 sent to a remote syslog server. It attempts to follow the protocol
@@ -132,7 +150,7 @@ class MsgPart(object):
         self.content = "[%d]" % os.getpid() + self.content
 
 
-class SyslogMessage(object):
+class Message(object):
 
     MAX_LEN = 1024
 
@@ -151,17 +169,31 @@ class Logger(object):
     PORT = 514
 
     def __init__(self):
-        self._sockets = []
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._hostnames = {}
+        self._include_pid = False
 
+    def include_pid(self):
+        self._include_pid = True
+        
     def add_host(self, hostname):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.connect((hostname, self.PORT))
-        self._sockets.append(sock)
+        self._hostnames[hostname] = 1
+
+    def remove_host(self, hostname):
+        del self._hostnames[hostname]
+
+    def _send_data_to_hosts(self, data):
+        for hostname in self._hostnames:
+            self._sock.sendto(data, (hostname, self.PORT))
 
     def log(self, facility, level, text):
         pri = PriPart(facility, level)
         header = HeaderPart()
         msg = MsgPart(content=text)
-        data = str(SyslogMessage(pri, header, msg))
-        for sock in self._sockets:
-            sock.send(data)
+        if self._include_pid:
+            msg.include_pid()
+        data = str(Message(pri, header, msg))
+        self._send_data_to_hosts(data)
+
+    def send_message(self, message):
+        self._send_data_to_hosts(str(message))
