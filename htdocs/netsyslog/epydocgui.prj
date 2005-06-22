@@ -22,7 +22,7 @@ sS'help'
 p10
 NsS'modules'
 p11
-(S'/home/gashton/data/personal/cvs/hacksaw/netsyslog/netsyslog.py'
+(S'../../netsyslog/netsyslog.py'
 p12
 tp13
 sS'private'
