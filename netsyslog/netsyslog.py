@@ -32,9 +32,40 @@ typical requirement of a logging package) to one or more syslog
 servers.
 
 The format of the UDP packets sent by netsyslog adheres closely to
-that defined in RFC 3164.
+that defined in RFC 3164. Much of the terminology used in the RFC has
+been incorporated into the names of the classes and properties and is
+used throughout this documentation.
 
-For more information see http://hacksaw.sourceforge.net/netsyslog/.
+OVERVIEW
+
+The simplest way to use netsyslog is to use it for creating log
+messages containing the current time, hostname, program name,
+etc. This is how you do it:
+
+import syslog
+import netsyslog
+
+logger = netsyslog.Logger()
+logger.include_pid = True  # optional
+logger.add_host("localhost")
+logger.log(syslog.LOG_USER, syslog.LOG_INFO, "Hello World")
+
+You may call the add_host() method as many times as you wish; your log
+messages will be sent to all hosts.
+
+If you need more control over the contents of the packets you can
+construct a packet yourself:
+
+pri = netsyslog.PriPart(syslog.LOG_USER, syslog.LOG_INFO)
+header = netsyslog.HeaderPart("Jun  1 18:34:03", "myhost")
+msg = netsyslog.MsgPart("myprog", "[%s]: Hello World" % mypid)
+packet = netsyslog.Packet(pri, header, msg)
+logger.send_packet(packet)
+
+See the API documentation below for more details.
+
+Further information and support can be found from the netsyslog home
+page: http://hacksaw.sourceforge.net/netsyslog/
 
 """
 
@@ -50,7 +81,16 @@ import time
 
 class PriPart(object):
 
-    """The PRI part of the message (see RFC 3164)."""
+    """The PRI part of the packet.
+
+    Though never printed in the output from a syslog server, the PRI
+    part is a crucial part of the packet. It encodes both the facility
+    and severity of the packet, both of which are defined in terms of
+    numerical constants from the standard syslog module.
+
+    See Section 4.1.1 of RFC 3164 for details.
+
+    """
 
     def __init__(self, facility, severity):
         """Initialise the object, specifying facility and severity.
@@ -73,12 +113,28 @@ class HeaderPart(object):
 
     """The HEADER part of the message
 
-    The HEADER contains a timestamp (that MUST be formatted according
-    to the specification and a hostname field).
+    The HEADER contains a timestamp and a hostname. It is the first
+    component of the log message that is displayed in the output of
+    syslog.
+
+    See Section 4.1.2 of RFC 3164 for details.
 
     """
 
     def __init__(self, timestamp=None, hostname=None):
+        """Initialise the object, specifying timestamp and hostname.
+
+        The timestamp represents the local time when the log message
+        was created. If the timestamp is not set the current local
+        time will be used. See the timestamp property for a note on
+        the format.
+
+        The hostname should be set to the hostname of the computer
+        that originally generated the log message. If the hostname is
+        not set the hostname of the local computer will be used. See
+        the hostname property for a note on the format.
+
+        """
         self.timestamp = timestamp
         self.hostname = hostname
 
@@ -88,7 +144,7 @@ class HeaderPart(object):
     def _get_timestamp(self):
         return self._timestamp
 
-    def calculate_current_timestamp(self):
+    def _calculate_current_timestamp(self):
         localtime = time.localtime()
         day = time.strftime("%d", localtime)
         if day[0] == "0":
@@ -106,7 +162,7 @@ class HeaderPart(object):
     
     def _set_timestamp(self, value):
         if not self._timestamp_is_valid(value):
-            value = self.calculate_current_timestamp()
+            value = self._calculate_current_timestamp()
         self._timestamp = value
 
     timestamp = property(_get_timestamp, _set_timestamp, None,
@@ -137,14 +193,40 @@ class HeaderPart(object):
 
 class MsgPart(object):
 
+    """Represents the MSG part of a syslog packet.
+
+    The MSG part of the packet consists of the TAG and CONTENT. The
+    TAG and the CONTENT fields must be separated by a non-alphanumeric
+    character. Unless you ensure that the CONTENT field begins with
+    such a character a seperator of a colon and space will be inserted
+    between them when the MsgPart object is converted into a UDP
+    packet.
+
+    See Section 4.1.3 of RFC 3164 for details.
+
+    """
+
     MAX_TAG_LEN = 32
 
     def __init__(self, tag=None, content=""):
+        """Initialise the object, specifying tag and content.
+
+        If the tag is not set it will be set automatically to the name
+        of the calling program.
+
+        See the documentation for the tag and content properties for
+        further documentation.
+
+        """        
         self.tag = tag
         self.content = content
+        self._include_pid = False
 
     def __str__(self):
-        return self.tag + self.content
+        content = self.content
+        if self._include_pid:
+            content = "[%d]" % os.getpid() + content
+        return self.tag + content
 
     def _get_tag(self):
         return self._tag
@@ -154,7 +236,14 @@ class MsgPart(object):
             value = sys.argv[0]
         self._tag = value[:self.MAX_TAG_LEN]
 
-    tag = property(_get_tag, _set_tag)
+    tag = property(_get_tag, _set_tag, None,
+                   """The name of the program that generated the log message.
+
+                   The tag can only contain alphanumeric
+                   characters. If the tag is longer than %d characters
+                   it will be truncated automatically.
+
+                   """ % MAX_TAG_LEN)
 
     def _get_content(self):
         return self._content
@@ -173,17 +262,51 @@ class MsgPart(object):
         value = self._prepend_seperator(value)
         self._content = value
 
-    content = property(_get_content, _set_content)
+    content = property(_get_content, _set_content, None,
+                       """The main component of the log message.
 
-    def include_pid(self):
-        self.content = "[%d]" % os.getpid() + self.content
+                       The content field is a freeform field that
+                       often begins with the process ID (pid) of the
+                       program that created the message. If the log
+                       message should appear as though it was created
+                       by the current process you can set include_pid
+                       to True as a shortcut to setting it yourself.
+
+                       """)
+
+    def _get_include_pid(self):
+        return self._include_pid
+
+    def _set_include_pid(self, boolean):
+        self._include_pid = boolean
+
+    include_pid = property(_get_include_pid, _set_include_pid, None,
+                           """Include the current process ID in the content.
+
+                           include_pid is a boolean and defaults to False.
+
+                           Also see the docs for the content property.""")
 
 
-class Message(object):
+class Packet(object):
+
+    """Combines the PRI, HEADER and MSG into a packet.
+
+    If the packet is longer than MAX_LEN bytes in length it is
+    automatically truncated to 1024 bytes in length prior to
+    sending; any extraneous bytes are lost.
+
+    """
 
     MAX_LEN = 1024
 
     def __init__(self, pri, header, msg):
+        """Initialise the object.
+
+        The three arguments must be instances of the PriPart,
+        HeaderPart and MsgPart classes.
+
+        """
         self.pri = pri
         self.header = header
         self.msg = msg
@@ -202,8 +325,14 @@ class Logger(object):
         self._hostnames = {}
         self._include_pid = False
 
-    def include_pid(self):
-        self._include_pid = True
+    def _get_include_pid(self):
+        return self._include_pid
+
+    def _set_include_pid(self, boolean):
+        self._include_pid = boolean
+
+    include_pid = property(_get_include_pid, _set_include_pid, None,
+                           """See the docs for MsgPart.content.""")
         
     def add_host(self, hostname):
         self._hostnames[hostname] = 1
@@ -211,18 +340,18 @@ class Logger(object):
     def remove_host(self, hostname):
         del self._hostnames[hostname]
 
-    def _send_data_to_hosts(self, data):
+    def _send_packet_to_hosts(self, packet):
         for hostname in self._hostnames:
-            self._sock.sendto(data, (hostname, self.PORT))
+            self._sock.sendto(str(packet), (hostname, self.PORT))
 
     def log(self, facility, level, text):
         pri = PriPart(facility, level)
         header = HeaderPart()
         msg = MsgPart(content=text)
         if self._include_pid:
-            msg.include_pid()
-        data = str(Message(pri, header, msg))
-        self._send_data_to_hosts(data)
+            msg.include_pid = True
+        packet = Packet(pri, header, msg)
+        self._send_packet_to_hosts(packet)
 
-    def send_message(self, message):
-        self._send_data_to_hosts(str(message))
+    def send_packet(self, packet):
+        self._send_packet_to_hosts(packet)
