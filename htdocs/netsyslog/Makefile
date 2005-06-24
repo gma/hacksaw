@@ -9,7 +9,6 @@ NAME=netsyslog
 DOCDIR=doc
 
 upload: .upload-html .upload-doc
-#upload: $(DOCDIR)/index.html
 
 
 .upload-html: *.html
