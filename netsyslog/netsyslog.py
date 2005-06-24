@@ -18,54 +18,27 @@
 # $Id$
 
 
-"""send log messages to remote syslog server
+"""netsyslog enables you to construct syslog messages and send them
+(via UDP) to a remote syslog server directly from Python. You can send
+log messages that contain the current time, local hostname and calling
+program name (i.e. the typical requirement of a logging package) to
+one or more syslog servers.
 
-netsyslog enables you to construct syslog messages and send them (via
-UDP) to a remote syslog server directly from Python. Unlike other
-syslog modules it allows you to set the metadata (e.g. time, host
-name, program name, etc.) yourself, giving you full control over the
-contents of the UDP packets that it creates.
+Unlike other syslog modules netsyslog also allows you to set the
+metadata (e.g. time, host name, program name, etc.) yourself, giving
+you full control over the contents of the UDP packets that it creates.
 
-The module also allows you to send log messages that contain the
-current time, local hostname and calling program name (i.e. the
-typical requirement of a logging package) to one or more syslog
-servers.
+See L{Logger.log} and L{Logger.send_packet} for a synopsis of these
+two techniques.
 
 The format of the UDP packets sent by netsyslog adheres closely to
-that defined in RFC 3164. Much of the terminology used in the RFC has
-been incorporated into the names of the classes and properties and is
-used throughout this documentation.
+that defined in U{RFC 3164<http://www.ietf.org/rfc/rfc3164.txt>}. Much
+of the terminology used in the RFC has been incorporated into the
+names of the classes and properties and is used throughout this
+documentation.
 
-OVERVIEW
-
-The simplest way to use netsyslog is to use it for creating log
-messages containing the current time, hostname, program name,
-etc. This is how you do it:
-
-import syslog
-import netsyslog
-
-logger = netsyslog.Logger()
-logger.include_pid = True  # optional
-logger.add_host("localhost")
-logger.log(syslog.LOG_USER, syslog.LOG_INFO, "Hello World")
-
-You may call the add_host() method as many times as you wish; your log
-messages will be sent to all hosts.
-
-If you need more control over the contents of the packets you can
-construct a packet yourself:
-
-pri = netsyslog.PriPart(syslog.LOG_USER, syslog.LOG_INFO)
-header = netsyslog.HeaderPart("Jun  1 18:34:03", "myhost")
-msg = netsyslog.MsgPart("myprog", "[%s]: Hello World" % mypid)
-packet = netsyslog.Packet(pri, header, msg)
-logger.send_packet(packet)
-
-See the API documentation below for more details.
-
-Further information and support can be found from the netsyslog home
-page: http://hacksaw.sourceforge.net/netsyslog/
+Further information and support can be found from the U{netsyslog home
+page<http://hacksaw.sourceforge.net/netsyslog/>}.
 
 """
 
@@ -111,7 +84,7 @@ class PriPart(object):
 
 class HeaderPart(object):
 
-    """The HEADER part of the message
+    """The HEADER part of the message.
 
     The HEADER contains a timestamp and a hostname. It is the first
     component of the log message that is displayed in the output of
@@ -126,13 +99,13 @@ class HeaderPart(object):
 
         The timestamp represents the local time when the log message
         was created. If the timestamp is not set the current local
-        time will be used. See the timestamp property for a note on
-        the format.
+        time will be used. See the L{HeaderPart.timestamp} property
+        for a note on the format.
 
         The hostname should be set to the hostname of the computer
         that originally generated the log message. If the hostname is
         not set the hostname of the local computer will be used. See
-        the hostname property for a note on the format.
+        the L{HeaderPart.hostname} property for a note on the format.
 
         """
         self.timestamp = timestamp
@@ -171,7 +144,9 @@ class HeaderPart(object):
                          Must follow the format 'Mmm DD HH:MM:SS'.  If
                          the day of the month is less than 10, then it
                          MUST be represented as a space and then the
-                         number.""")
+                         number.
+
+                         """)
 
     def _get_hostname(self):
         return self._hostname
@@ -199,7 +174,7 @@ class MsgPart(object):
     TAG and the CONTENT fields must be separated by a non-alphanumeric
     character. Unless you ensure that the CONTENT field begins with
     such a character a seperator of a colon and space will be inserted
-    between them when the MsgPart object is converted into a UDP
+    between them when the C{MsgPart} object is converted into a UDP
     packet.
 
     See Section 4.1.3 of RFC 3164 for details.
@@ -214,8 +189,8 @@ class MsgPart(object):
         If the tag is not set it will be set automatically to the name
         of the calling program.
 
-        See the documentation for the tag and content properties for
-        further documentation.
+        See the documentation for the L{MsgPart.tag} and
+        L{MsgPart.content} properties for further documentation.
 
         """        
         self.tag = tag
@@ -269,7 +244,7 @@ class MsgPart(object):
                        often begins with the process ID (pid) of the
                        program that created the message. If the log
                        message should appear as though it was created
-                       by the current process you can set include_pid
+                       by the current process you can set L{include_pid}
                        to True as a shortcut to setting it yourself.
 
                        """)
@@ -283,18 +258,23 @@ class MsgPart(object):
     include_pid = property(_get_include_pid, _set_include_pid, None,
                            """Include the current process ID in the content.
 
-                           include_pid is a boolean and defaults to False.
+                           include_pid is a boolean and defaults to
+                           False. If set to True the process ID will
+                           be surrounded with square brackets and
+                           inserted immediately after the TAG.
 
-                           Also see the docs for the content property.""")
+                           Also see the docs for the L{content} property.
+
+                           """)
 
 
 class Packet(object):
 
     """Combines the PRI, HEADER and MSG into a packet.
 
-    If the packet is longer than MAX_LEN bytes in length it is
-    automatically truncated to 1024 bytes in length prior to
-    sending; any extraneous bytes are lost.
+    If the packet is longer than L{MAX_LEN} bytes in length it is
+    automatically truncated prior to sending; any extraneous bytes are
+    lost.
 
     """
 
@@ -303,8 +283,8 @@ class Packet(object):
     def __init__(self, pri, header, msg):
         """Initialise the object.
 
-        The three arguments must be instances of the PriPart,
-        HeaderPart and MsgPart classes.
+        The three arguments must be instances of the L{PriPart},
+        L{HeaderPart} and L{MsgPart} classes.
 
         """
         self.pri = pri
@@ -317,6 +297,17 @@ class Packet(object):
 
 
 class Logger(object):
+
+    """Send log messages to syslog servers.
+
+    The Logger class provides two different methods for sending log
+    messages. The first approach (the L{log} method) is suitable for
+    creating new log messages from within a normal application. The
+    second (the L{send_packet} method) is designed for use in
+    circumstances where you need full control over the contents of
+    the syslog packet.
+
+    """
 
     PORT = 514
 
@@ -332,12 +323,28 @@ class Logger(object):
         self._include_pid = boolean
 
     include_pid = property(_get_include_pid, _set_include_pid, None,
-                           """See the docs for MsgPart.content.""")
+                           """Has the same affect has L{MsgPart.include_pid}.
+
+                           Note that the value of this attribute has
+                           no effect on messages sent with the
+                           L{send_packet} method as the process ID
+                           cannot be usefully ascertained under these
+                           circumstances.
+
+                           """)
         
     def add_host(self, hostname):
+        """Add hostname to the list of hosts that will receive packets.
+
+        Can be a hostname or an IP address. Note that if the hostname
+        cannot be resolved calls to L{log} or L{send_packet} will take
+        a long time to return.
+        
+        """
         self._hostnames[hostname] = 1
 
     def remove_host(self, hostname):
+        """Remove hostname from the list of hosts that will receive packets."""
         del self._hostnames[hostname]
 
     def _send_packet_to_hosts(self, packet):
@@ -345,6 +352,26 @@ class Logger(object):
             self._sock.sendto(str(packet), (hostname, self.PORT))
 
     def log(self, facility, level, text):
+        """Send the message text to all registered hosts.
+
+        The facility and level will be used to create the packet's PRI
+        part. The HEADER will be automatically determined from the
+        current time and hostname. The MSG will be set from the
+        running program's name and the text parameter.
+
+        This is the simplest way to use netsyslog, creating log
+        messages containing the current time, hostname, program name,
+        etc. This is how you do it::
+        
+            logger = netsyslog.Logger()
+            logger.include_pid = True  # optional
+            logger.add_host("localhost")
+            logger.log(syslog.LOG_USER, syslog.LOG_INFO, "Hello World")
+
+        Note that if L{include_pid} is True the process ID will be
+        prepended to the text parameter, enclosed in square brackets.
+
+        """
         pri = PriPart(facility, level)
         header = HeaderPart()
         msg = MsgPart(content=text)
@@ -354,4 +381,20 @@ class Logger(object):
         self._send_packet_to_hosts(packet)
 
     def send_packet(self, packet):
+        """Send a L{Packet} object to all registered hosts.
+
+        This method requires more effort than L{log} as you need to
+        construct your own L{Packet} object beforehand, but it does
+        give you full control over the contents of the packet::
+
+            pri = netsyslog.PriPart(syslog.LOG_USER, syslog.LOG_INFO)
+            header = netsyslog.HeaderPart("Jun  1 18:34:03", "myhost")
+            msg = netsyslog.MsgPart("myprog", "[%s]: Hello World" % mypid)
+            packet = netsyslog.Packet(pri, header, msg)
+
+            logger = netsyslog.Logger()
+            logger.add_host("localhost")
+            logger.send_packet(packet)
+
+        """
         self._send_packet_to_hosts(packet)
