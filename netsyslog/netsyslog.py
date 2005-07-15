@@ -351,7 +351,7 @@ class Logger(object):
 
             pri = netsyslog.PriPart(syslog.LOG_USER, syslog.LOG_INFO)
             header = netsyslog.HeaderPart("Jun  1 18:34:03", "myhost")
-            msg = netsyslog.MsgPart("myprog", "[%s]: Hello World" % mypid)
+            msg = netsyslog.MsgPart("myprog", "Hello World", mypid)
             packet = netsyslog.Packet(pri, header, msg)
 
             logger = netsyslog.Logger()

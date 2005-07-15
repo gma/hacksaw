@@ -73,10 +73,9 @@
 	>>> import netsyslog
 	>>> import syslog
 	>>> logger = netsyslog.Logger()
-	>>> logger.include_pid()
 	>>> logger.add_host("somehost.mydomain.com")
 	>>> logger.add_host("otherhost.mydomain.com")
-	>>> logger.log(syslog.LOG_USER, syslog.LOG_NOTICE, "Hey, it works!")</pre>
+	>>> logger.log(syslog.LOG_USER, syslog.LOG_NOTICE, "Hey, it works!", pid=True)</pre>
 
       <p>
 	If you don't see your messages appearing on your syslog
