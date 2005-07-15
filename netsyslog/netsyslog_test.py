@@ -131,7 +131,7 @@ class MsgPartTest(MockMsgTest):
         self.assertEqual(msg.tag, DEFAULT_TAG)
 
     def test_override_tag(self):
-        """Check TAG can be set manually to override program name"""
+        """Check TAG can be set manually"""
         msg = netsyslog.MsgPart(tag="mytag")
         self.assertEqual(msg.tag, "mytag")
 
@@ -143,19 +143,18 @@ class MsgPartTest(MockMsgTest):
 
     def test_space_prefixed_to_content(self):
         """Check single space inserted infront of CONTENT if necessary"""
-        msg = netsyslog.MsgPart(content="hello")
-        self.assertEqual(str(msg), "%s: hello" % DEFAULT_TAG)
+        msg = netsyslog.MsgPart("program", content="hello")
+        self.assertEqual(str(msg), "program: hello")
 
     def test_space_only_added_if_necessary(self):
         """Check space only added to CONTENT if necessary"""
-        msg = netsyslog.MsgPart(content=" hello")
-        self.assertEqual(str(msg), "%s hello" % DEFAULT_TAG)
+        msg = netsyslog.MsgPart("program", content=" hello")
+        self.assertEqual(str(msg), "program hello")
 
     def test_include_pid(self):
         """Check the program's pid can be included in CONTENT"""
-        msg = netsyslog.MsgPart(content="hello")
-        msg.include_pid = True
-        self.assertEqual(str(msg), "%s[%d]: hello" % (DEFAULT_TAG, MOCK_PID))
+        msg = netsyslog.MsgPart("program", "hello", pid=MOCK_PID)
+        self.assertEqual(str(msg), "program[%d]: hello" % (MOCK_PID))
 
 
 DEFAULT_PRI = netsyslog.PriPart(syslog.LOG_LOCAL4, syslog.LOG_NOTICE)
@@ -172,7 +171,7 @@ class PacketTest(unittest.TestCase):
         start_of_packet = "<165>%s %s" % (header, DEFAULT_TAG)
         self.assert_(str(packet).startswith(start_of_packet))
 
-    def test_max_lenth(self):
+    def test_max_length(self):
         """Check that no syslog packet is longer than 1024 bytes"""
         message = "a" * 2048
         packet = netsyslog.Packet(DEFAULT_PRI, DEFAULT_HEADER, message)
@@ -223,19 +222,28 @@ class LoggerTest(MockHeaderTest, MockMsgTest):
         logger.log(syslog.LOG_LOCAL4, syslog.LOG_NOTICE, "hello")
         self.mock_sock.verify()
 
-    def test_include_pid(self):
-        """Check the program's pid can be included in a log message"""
-        msg_with_pid = copy.copy(DEFAULT_MSG)
-        msg_with_pid.include_pid = True
-        packet = netsyslog.Packet(DEFAULT_PRI, DEFAULT_HEADER, msg_with_pid)
+    def test_pid_not_included_by_default(self):
+        """Check the program's pid is not included by default"""
+        packet = "<165>%s myhost program: hello" % DEFAULT_TIMESTAMP
         hostname = "localhost"
         address = (hostname, netsyslog.Logger.PORT)
-        self.mock_sock.expects(once()).sendto(eq(str(packet)), eq(address))
+        self.mock_sock.expects(once()).sendto(eq(packet), eq(address))
         
         logger = netsyslog.Logger()
-        logger.include_pid = True
         logger.add_host(hostname)
         logger.log(syslog.LOG_LOCAL4, syslog.LOG_NOTICE, "hello")
+        self.mock_sock.verify()
+
+    def test_include_pid(self):
+        """Check the program's pid can be included in a log message"""
+        packet = "<165>%s myhost program[1234]: hello" % DEFAULT_TIMESTAMP
+        hostname = "localhost"
+        address = (hostname, netsyslog.Logger.PORT)
+        self.mock_sock.expects(once()).sendto(eq(packet), eq(address))
+        
+        logger = netsyslog.Logger()
+        logger.add_host(hostname)
+        logger.log(syslog.LOG_LOCAL4, syslog.LOG_NOTICE, "hello", pid=True)
         self.mock_sock.verify()
 
     def test_send_packets_by_hand(self):

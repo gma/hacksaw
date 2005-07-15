@@ -183,24 +183,24 @@ class MsgPart(object):
 
     MAX_TAG_LEN = 32
 
-    def __init__(self, tag=None, content=""):
+    def __init__(self, tag=None, content="", pid=None):
         """Initialise the object, specifying tag and content.
-
-        If the tag is not set it will be set automatically to the name
-        of the calling program.
 
         See the documentation for the L{MsgPart.tag} and
         L{MsgPart.content} properties for further documentation.
 
+        If the pid is set it will be prepended to the content in
+        square brackets when the packet is created.
+
         """        
         self.tag = tag
         self.content = content
-        self._include_pid = False
+        self.pid = pid
 
     def __str__(self):
         content = self.content
-        if self._include_pid:
-            content = "[%d]" % os.getpid() + content
+        if self.pid is not None:
+            content = "[%s]" % self.pid + content
         return self.tag + content
 
     def _get_tag(self):
@@ -242,30 +242,9 @@ class MsgPart(object):
 
                        The content field is a freeform field that
                        often begins with the process ID (pid) of the
-                       program that created the message. If the log
-                       message should appear as though it was created
-                       by the current process you can set L{include_pid}
-                       to True as a shortcut to setting it yourself.
+                       program that created the message.
 
                        """)
-
-    def _get_include_pid(self):
-        return self._include_pid
-
-    def _set_include_pid(self, boolean):
-        self._include_pid = boolean
-
-    include_pid = property(_get_include_pid, _set_include_pid, None,
-                           """Include the current process ID in the content.
-
-                           include_pid is a boolean and defaults to
-                           False. If set to True the process ID will
-                           be surrounded with square brackets and
-                           inserted immediately after the TAG.
-
-                           Also see the docs for the L{content} property.
-
-                           """)
 
 
 class Packet(object):
@@ -314,25 +293,7 @@ class Logger(object):
     def __init__(self):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._hostnames = {}
-        self._include_pid = False
 
-    def _get_include_pid(self):
-        return self._include_pid
-
-    def _set_include_pid(self, boolean):
-        self._include_pid = boolean
-
-    include_pid = property(_get_include_pid, _set_include_pid, None,
-                           """Has the same affect has L{MsgPart.include_pid}.
-
-                           Note that the value of this attribute has
-                           no effect on messages sent with the
-                           L{send_packet} method as the process ID
-                           cannot be usefully ascertained under these
-                           circumstances.
-
-                           """)
-        
     def add_host(self, hostname):
         """Add hostname to the list of hosts that will receive packets.
 
@@ -351,7 +312,7 @@ class Logger(object):
         for hostname in self._hostnames:
             self._sock.sendto(str(packet), (hostname, self.PORT))
 
-    def log(self, facility, level, text):
+    def log(self, facility, level, text, pid=False):
         """Send the message text to all registered hosts.
 
         The facility and level will be used to create the packet's PRI
@@ -364,19 +325,20 @@ class Logger(object):
         etc. This is how you do it::
         
             logger = netsyslog.Logger()
-            logger.include_pid = True  # optional
             logger.add_host("localhost")
             logger.log(syslog.LOG_USER, syslog.LOG_INFO, "Hello World")
 
-        Note that if L{include_pid} is True the process ID will be
-        prepended to the text parameter, enclosed in square brackets.
+        If pid is True the process ID will be prepended to the text
+        parameter, enclosed in square brackets and followed by a
+        colon.
 
         """
         pri = PriPart(facility, level)
         header = HeaderPart()
-        msg = MsgPart(content=text)
-        if self._include_pid:
-            msg.include_pid = True
+        if pid:
+            msg = MsgPart(content=text, pid=os.getpid())
+        else:
+            msg = MsgPart(content=text)
         packet = Packet(pri, header, msg)
         self._send_packet_to_hosts(packet)
 

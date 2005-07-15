@@ -17,9 +17,8 @@ try the following code.
     >>> import netsyslog
     >>> import syslog
     >>> logger = netsyslog.Logger()
-    >>> logger.include_pid()
     >>> logger.add_host("myhost")
-    >>> logger.log(syslog.LOG_USER, syslog.LOG_INFO, "Hey, it works!")
+    >>> logger.log(syslog.LOG_USER, syslog.LOG_INFO, "Test", pid=True)
 
 You should see a log message appear in one of your syslog files
 (probably /var/log/messages).
