@@ -6,8 +6,11 @@
 # than the fact that it pulls logs from another host, rather than
 # copying them *to* another host) in two key ways:
 #
-#   1. it doesn't delete files from the remote host
-#   2. it therefore keeps track of the last time a file was retrieved
+#   1. It doesn't delete files from the remote host (though maybe it
+#      should).
+#
+#   2. It therefore keeps track of the last time a file was retrieved
+#      in order to avoid re-copying files every time it is run.
 #
 # $Id$
 # (C) Cmed Ltd, 2005
@@ -110,7 +113,7 @@ file_not_empty()
 function scp_file
 {
     local filename=$1
-    scp $USERNAME@$REMOTEHOST:$filename $LOCALDIR
+    scp -Bq $USERNAME@$REMOTEHOST:$filename $LOCALDIR
 }
 
 
