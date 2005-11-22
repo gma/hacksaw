@@ -18,7 +18,7 @@ def get_processors(config):
         try:
             __import__(proc)
         except ImportError, e:
-            sys.stderr.write('Error: %s' % e)
+            sys.stderr.write("Error: %s" % e)
         else:
             module = sys.modules[proc]
             proc_config = module.Config(config.filename)
@@ -44,7 +44,7 @@ class Usage(Exception):
 
 
 def main(argv=None):
-    config_file = os.path.join('/etc', 'hacksaw.conf')
+    config_file = os.path.join("/etc", "hacksaw.conf")
     if argv is None:
         argv = sys.argv[1:]
     try:
@@ -53,7 +53,7 @@ def main(argv=None):
         except getopt.error, msg:
             raise Usage(msg)
         for opt, arg in opts:
-            if opt == '-c':
+            if opt == "-c":
                 config_file = arg
         config = hacksaw.lib.GeneralConfig(config_file)
         process_log_files(config)
@@ -66,6 +66,6 @@ def main(argv=None):
 
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())
 
