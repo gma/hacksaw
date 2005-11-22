@@ -115,8 +115,8 @@ REMOTEHOST=$1
 [ -z $REMOTEHOST ] && usage
 
 files=$(find $LOCALDIR \
-    -type f ! \
-    -regex ".*\.\($COPY_EXT\|$HOLD_EXT\)" \
+    -type f \
+    ! -regex ".*\.\($COPY_EXT\|$HOLD_EXT\)" \
     -maxdepth 1)
 
 for log_file in $files; do
