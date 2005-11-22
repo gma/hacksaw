@@ -6,7 +6,7 @@ from distutils.core import setup
 
 
 setup(name="hacksaw",
-      version="0.1.1",
+      version="0.1.2",
       author="Cmed Technology",
       author_email="developers@cmedltd.com",
       url="http://hacksaw.sourceforge.net/",
@@ -15,6 +15,6 @@ setup(name="hacksaw",
       package_dir={"": "src"},
       packages=["hacksaw", "hacksaw.proc"],
       scripts=["src/processlogs.py", "src/run-processor.py",
-               "scripts/push-logs.sh"],
+               "scripts/pull-logs.sh", "scripts/push-logs.sh"],
       data_files=[("etc", ["etc/hacksaw.conf"])],
       )
