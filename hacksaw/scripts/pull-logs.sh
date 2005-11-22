@@ -68,7 +68,7 @@ send_error_message()
     local lines=$(ssh $USERNAME@$REMOTEHOST wc -l $log_file | \
 	$AWK '{ print $1 }')
     local kbytes=$(get_file_size $log_file)
-    local msg_file=$LOCALDIR/$(tempfile)
+    local msg_file=$(tempfile -d $LOCALDIR)
     local msg="ERROR: log file too large "
     msg="$msg ($(basename $log_file): $lines lines, $kbytes kB)"
     echo "$(date "+%b %e %T") $(hostname) $(basename $0)[$$]: $msg" > $msg_file
@@ -84,7 +84,7 @@ have_been_run_before()
 list_remote_files()
 {
     local command="find $REMOTEDIR -type f -maxdepth 1 \
-	! -regex \".*\.\($COPY_EXT|$HOLD_EXT\)\""
+	! -regex \".*\.\($COPY_EXT\|$HOLD_EXT\)\""
     if have_been_run_before; then
 	command="$command -cnewer $REMOTEDIR/$LAST_RUN ! -name $LAST_RUN"
     fi
