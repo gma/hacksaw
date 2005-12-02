@@ -72,7 +72,7 @@ class Processor(hacksaw.lib.Processor):
         logger = netsyslog.Logger()
         for host in self.config.hosts:
             logger.add_host(host)
-            logger.send_packet(packet)
+        logger.send_packet(packet)
 
 
 class Config(hacksaw.lib.Config):
