@@ -8,6 +8,7 @@ import ConfigParser
 import getopt
 import os
 import sys
+import traceback
 
 import hacksaw.lib
 
@@ -62,10 +63,8 @@ def main(argv=None):
         print >>sys.stderr, "processlogs.py -c"
         return 2
     except Exception, e:
-        print >>sys.stderr, e
-
+        traceback.print_exc()
 
 
 if __name__ == "__main__":
     sys.exit(main())
-
