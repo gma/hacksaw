@@ -30,7 +30,7 @@
       <p>
 	netsyslog was initially developed for the <a
 	href="http://hacksaw.sourceforge.net/">Hack Saw</a> project,
-	where it was used to read log messages from a file and inject
+	where it is used to read log messages from a file and inject
 	them into a network of syslog servers, whilst maintaining the
 	times and hostnames recorded in the original messages.
       </p>
@@ -51,15 +51,24 @@
       <h2>Installation</h2>
 
       <p>
-	Though in an early stage of development netsyslog is already
-	fully working and usable. It needs packaging, but in the
-	meantime it is available from the Hack Saw project's CVS
-	repository in the netsyslog module. To try it out simply
-	checkout the latest code and run the following command:
+	Download the package from SourceForge:
+      </p>
+
+      <ul>
+	<li>
+	  <a href="http://prdownloads.sourceforge.net/hacksaw/netsyslog-0.1.0.tar.gz?download">netsyslog-0.1.0.tar.gz</a>
+	</li>
+      </ul>
+
+      <p>
+	Untar the package and install it, as follows:
       </p>
 
       <pre>
-	python setup.py install</pre>
+	$ tar zxf netsyslog-0.1.0.tar.gz
+	$ cd netsyslog-0.1.0
+	$ su -
+	# python setup.py install</pre>
 
       <p>
 	You should then be able to try sending a log message, as
@@ -87,7 +96,7 @@
       <h2>Documentation</h2>
 
       <p>
-	The API is now documented. You may also benefit from reading
+	The API is fully documented. You may also benefit from reading
         parts of the RFC that defines the format of a syslog packet.
       </p>
 
