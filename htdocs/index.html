@@ -14,17 +14,25 @@
     <div id="body">
       <h1>Latest News</h1>
       <ul>
-	<!--#include virtual="news/20040917.html" -->
+	<!--#include virtual="news/20060212.html" -->
       </ul>
 
       <h1>What is Hack Saw?</h1>
 
       <p>
-	Hack Saw is a <a href="syslog.html">syslog</a> monitoring
-	program for Unix. It allows the user to setup filters that
-	define which messages should generate alerts. Combined with
-	syslog's remote logging functionality it provides a scalable
-	and easily deployed monitoring solution.
+	Hack Saw is a log file transport mechanism. It was designed to
+	work well for retrieving log messages from local servers or
+	remote (and often inaccessible) computers. It works well
+	through firewalls.
+      </p>
+
+      <p>
+	Incoming log files can be saved to a local file, attached to
+	an email or forwarded (via UDP, with <a
+	href="netsyslog/">netsyslog</a>) to a syslog server. If you
+	need to do something different (e.g. store the logs in a
+	database) you can do so by writing a plug-in. Plug-ins are
+	typically small, and are written in Python.
       </p>
       
       <p>
@@ -34,23 +42,17 @@
       </p>
 
       <h1>How does it work?</h1>
+
+      <p>
+	Log files are retrieved by <a
+	href="http://cvs.sourceforge.net/viewcvs.py/hacksaw/hacksaw/scripts/">scripts</a>
+	(run regularly by cron) and then handled, on a message by
+	message basis, by the <a
+	href="http://cvs.sourceforge.net/viewcvs.py/hacksaw/hacksaw/src/hacksaw/proc/">processors</a>
+	that you've <a
+	href="http://cvs.sourceforge.net/viewcvs.py/hacksaw/hacksaw/etc/">configured</a>.
+      </p>
             
-      <p>
-	Hack Saw is really quite simple; it monitors messages that are
-	fed to it from a suitably configured syslog server, looking
-	out for messages that contain text that the administrator is
-	interested in. Any log message that matches the
-	administrator's filters will be brought to the user's
-	attention via several different alerting mechanisms
-	(e.g. email, desktop alerts).
-      </p>
-
-      <p>
-	Because syslog itself supports propagating messages between
-	seperate computers, with syslog and Hack Saw you can easily
-	monitor a large number of computers for critical errors.
-      </p>
-
       <h1>Feedback</h1>
             
       <p>
