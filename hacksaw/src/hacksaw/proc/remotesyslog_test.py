@@ -5,7 +5,7 @@
 import syslog
 import unittest
 
-from pmock import *
+import pmock
 
 import hacksaw.lib_test
 import hacksaw.proc.remotesyslog
@@ -47,6 +47,12 @@ class ConfigTest(RemoteSyslogTest):
         self.append_to_file("priority: warn")
         self.assertEqual(self.config.priority, syslog.LOG_WARNING)
 
+    def test_get_ignore_patterns(self):
+        """Check we can get the regexps for ignoring messages"""
+        self.append_to_file('ignore: [("cat", "dog"), ("start", "stop")]')
+        self.assertEqual(self.config.ignore_patterns, [("cat", "dog"),
+                                                       ("start", "stop")])
+
 
 class LogMessageTest(unittest.TestCase):
 
@@ -80,6 +86,65 @@ class LogMessageTest(unittest.TestCase):
         self.assertEqual(message.text, 'Hello  world')
         
 
+class ActionTestCase(unittest.TestCase):
+
+    def test_handle_message(self):
+        """Test base class action calls successor: action_1 --> successor"""
+        message = "Hello World!"
+        successor = pmock.Mock()
+        successor.expects(pmock.once()).handle_message(pmock.eq(message))
+        action = hacksaw.proc.remotesyslog.Action(None, successor)
+        action.handle_message(message)
+        successor.verify()
+
+
+class ActionChainTest(unittest.TestCase):
+
+    def test_construct_actions(self):
+        """Test that actions are passed the processor on construction"""
+        
+        class FakeAction(object):
+
+            def __init__(self, processor, successor):
+                self.processor = processor
+                self.successor = successor
+
+        processor = pmock.Mock()
+        action_classes = [FakeAction]
+        chain = hacksaw.proc.remotesyslog.ActionChain(processor,
+                                                      action_classes)
+        action = chain.get_action(0)
+        self.assertEquals(action.processor, processor)
+        
+    def test_actions_constructed_and_linked(self):
+        """Check that the actions are linked correctly"""
+
+        class FakeAction(hacksaw.proc.remotesyslog.Action):
+
+            def __init__(self, processor, successor):
+                self._successor = successor
+                self.message = None
+
+            def handle_message(self, message):
+                self.message = message
+                super(FakeAction, self).handle_message(message)
+
+        class FakeTerminatingAction(FakeAction):
+
+            def handle_message(self, message):
+                self.message = message
+
+        action_classes = [FakeAction for idx in range(2)]
+        action_classes.append(FakeTerminatingAction)
+        action_chain = hacksaw.proc.remotesyslog.ActionChain(pmock.Mock(),
+                                                             action_classes)
+        message = "One Two"
+        action_chain.handle_message(message)
+        for idx in range(3):
+            action = action_chain.get_action(idx)
+            self.assertEquals(action.message, message)
+
+
 class ProcessorTest(RemoteSyslogTest):
 
     def test_get_process_only_name(self):
@@ -101,6 +166,7 @@ class ProcessorTest(RemoteSyslogTest):
         self.append_to_file("facility: daemon")
         self.append_to_file("priority: warn")
         self.append_to_file("hosts: localhost")
+        self.append_to_file("ignore: []")
         message = "Nov 22 08:59:54 myhost myproc[123]: Hello world!"
 
         class MockModule(object):
@@ -138,6 +204,58 @@ class ProcessorTest(RemoteSyslogTest):
             self.assertEqual(packet.initargs, (pri, header, msg))
         finally:
             hacksaw.proc.remotesyslog.netsyslog = origmod
+
+
+class SingleLineFilterTest(ProcessorTest):
+
+    def test_ignore_single_message(self):
+        """Assert SingleLineFilter handles a message specified to be ignored"""
+        self.append_to_file('ignore: [(".*yourhost.*",)]')
+        message = "Nov 22 08:59:54 yourhost myproc[123]: Hello world!"
+        processor = hacksaw.proc.remotesyslog.Processor(self.config)
+        processor.set_action_chain(
+            [hacksaw.proc.remotesyslog.SingleLineFilter]
+        )
+        processor.handle_message(message)
+        message = "Nov 22 08:59:54 myhost myproc[123]: Hello world!"
+        self.assertRaises(hacksaw.proc.remotesyslog.UnhandledMessageError,
+                          processor.handle_message, message)    
+
+
+class MultiLineFilterTest(ProcessorTest):
+
+    def setUp(self):
+        super(MultiLineFilterTest, self).setUp()
+        self._dispatched_messages = []
+
+    def test_ingore_multiple_lines(self):
+
+        class MockDispatcher(hacksaw.proc.remotesyslog.Action):
+
+            def handle_message(self_, message):
+                self._dispatched_messages.append(message)
+        
+        self.append_to_file('ignore: [(".*start.*", ".*end.*")]')
+        messages = [
+            "Nov 22 08:59:54 yourhost myproc[123]: Hello!",
+            "Nov 22 08:59:55 yourhost myproc[123]: start!",
+            "Nov 22 08:59:56 yourhost myproc[123]: middle!",
+            "Nov 22 08:59:56 myhost myproc[123]: middle!",
+            "Nov 22 08:59:56 yourhost myproc[321]: middle!",
+            "Nov 22 08:59:57 yourhost myproc[123]: end!",
+            "Nov 22 08:59:58 yourhost myproc[123]: Bye!"
+        ]
+        processor = hacksaw.proc.remotesyslog.Processor(self.config)
+        processor.set_action_chain(
+            [hacksaw.proc.remotesyslog.SingleLineFilter,
+             hacksaw.proc.remotesyslog.MultiLineFilter,
+             MockDispatcher]
+        )
+        for message in messages:
+            processor.handle_message(message)
+        expected_dispatched = [messages[0], messages[3], messages[4],
+                               messages[6]]
+        self.assertEquals(self._dispatched_messages, expected_dispatched)
 
 
 if __name__ == "__main__":
