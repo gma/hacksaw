@@ -166,7 +166,6 @@ class ProcessorTest(RemoteSyslogTest):
         self.append_to_file("facility: daemon")
         self.append_to_file("priority: warn")
         self.append_to_file("hosts: localhost")
-        self.append_to_file("ignore: []")
         message = "Nov 22 08:59:54 myhost myproc[123]: Hello world!"
 
         class MockModule(object):
@@ -206,7 +205,7 @@ class ProcessorTest(RemoteSyslogTest):
             hacksaw.proc.remotesyslog.netsyslog = origmod
 
 
-class SingleLineFilterTest(ProcessorTest):
+class SingleLineFilterTest(RemoteSyslogTest):
 
     def test_ignore_single_message(self):
         """Check SingleLineFilter handles a message specified to be ignored"""
@@ -221,7 +220,7 @@ class SingleLineFilterTest(ProcessorTest):
                           processor.handle_message, message)    
 
 
-class MultiLineFilterTest(ProcessorTest):
+class MultiLineFilterTest(RemoteSyslogTest):
 
     def setUp(self):
         super(MultiLineFilterTest, self).setUp()
