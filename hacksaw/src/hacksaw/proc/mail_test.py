@@ -23,6 +23,7 @@ class MailTest(hacksaw.lib_test.ConfigTest):
         hacksaw.lib_test.ConfigTest.setUp(self)
         self.append_to_file("[hacksaw.proc.mail]")
         self.append_to_file("messagestore: %s" % MailTest.MESSAGE_STORE)
+        self.read_config()
 
     def tearDown(self):
         hacksaw.lib_test.ConfigTest.tearDown(self)
@@ -106,35 +107,41 @@ class ConfigTest(MailTest):
         """Check we can get the path to the summary file"""
         path = "/path/to/message/store"
         self.append_to_file("messagestore: %s" % path)
+        self.read_config()
         self.assertEqual(self.config.message_store, path)
 
     def test_get_sender(self):
         """Check we can get the sender address"""
         self.append_to_file("sender: wilber@cmedltd.com")
+        self.read_config()
         self.assertEqual(self.config.sender, "wilber@cmedltd.com")
 
     def test_get_recipients(self):
         """Check we can get the recipient addresses"""
         recipients = "bob@foo.com, ged@localhost"
         self.append_to_file("recipients: %s" % recipients)
+        self.read_config()
         self.assertEqual(self.config.recipients,
                          ["bob@foo.com", "ged@localhost"])
 
     def test_get_subject(self):
         """Check we can get the email subject"""
         self.append_to_file("subject: Hacksaw e-mail")
+        self.read_config()
         self.assertEqual(self.config.subject, "Hacksaw e-mail")
 
     def test_get_mail_command(self):
         """Check we can get the command for sending mail"""
         sendmail = "/usr/lib/sendmail -t"
         self.append_to_file("mailcommand: %s" % sendmail)
+        self.read_config()
         self.assertEqual(self.config.mail_command, sendmail)
 
     def test_get_maximum_message_store_size(self):
         """Check we can get the maximum message store size"""
         max_message_store = 1024
         self.append_to_file("max_messagestore: %s" % max_message_store)
+        self.read_config()
         self.assertEqual(self.config.max_message_store, max_message_store)
 
 
@@ -150,12 +157,14 @@ class MessageSenderTest(MailTest):
     def test_address_validity_when_valid(self):
         """Check we allow valid addresses"""
         self.append_to_file("recipients: bob@foo.com, ged@localhost")
+        self.read_config()
         sender = hacksaw.proc.mail.MessageSender(self.config)
         self.assert_(sender.addresses_are_valid())
 
     def test_address_validity_when_invalid(self):
         """Check we don't send messages to invalid addresses"""
         self.append_to_file("recipients: bob@foo.com, ged at localhost")
+        self.read_config()
         sender = hacksaw.proc.mail.MessageSender(self.config)
         self.failIf(sender.addresses_are_valid())
 
@@ -164,6 +173,7 @@ class MessageSenderTest(MailTest):
         self.append_to_file('recipients: gteale@cmedltd.com')
         self.append_to_file('subject: Hacksaw e-mail')
         self.append_to_file('mailcommand: /usr/lib/sendmail -t')
+        self.read_config()
         mock_os = Mock()
         mock_os.expects(once()).popen(
             eq('/usr/lib/sendmail -t'), eq('w')).will(return_value(file_obj))
@@ -178,6 +188,7 @@ class MessageSenderTest(MailTest):
     def test_use_correct_mail_command(self):
         """Check that the correct mail command is used to send mail"""
         self.append_to_file("max_messagestore: 1")
+        self.read_config()
         file_obj = Mock()
         file_obj.expects(once()).method("close")
         file_obj.expects(once()).method("write")
@@ -194,6 +205,7 @@ class MessageSenderTest(MailTest):
     def test_log_attachment(self):
         """Check that the log messages are attached to the mail"""
         self.append_to_file("max_messagestore: 1")
+        self.read_config()
         file_obj = Mock()
         file_obj.expects(once()).close()
         file_obj.expects(once()).write(
@@ -211,6 +223,7 @@ class MessageSenderTest(MailTest):
     def test_deletion(self):
         """Check message store deleted if mail sent"""
         self.append_to_file("max_messagestore: 1")
+        self.read_config()
         file_obj = Mock()
         file_obj.expects(once()).method("close").will(return_value(None))
         file_obj.expects(once()).write(
@@ -228,6 +241,7 @@ class MessageSenderTest(MailTest):
     def test_unsuccessful_send(self):
         """Check message store not deleted if mail not sent"""
         self.append_to_file("max_messagestore: 1")
+        self.read_config()
         file_obj = Mock()
         file_obj.expects(once()).method("close").will(return_value(1))
         file_obj.expects(once()).write(
@@ -253,6 +267,7 @@ class SendErrorTest(MessageSenderTest):
         self.append_to_file('recipients: gteale@cmedltd.com')
         self.append_to_file('subject: Hacksaw error: Message store too large')
         self.append_to_file('mailcommand: /usr/lib/sendmail -t')
+        self.read_config()
         mock_os = Mock()
         mock_os.expects(once()).popen(
             eq('/usr/lib/sendmail -t'), eq('w')).will(return_value(file_obj))
@@ -267,6 +282,7 @@ class SendErrorTest(MessageSenderTest):
     def test_message_store_too_large(self):
         """Check error message is sent if message store too large"""
         self.append_to_file("max_messagestore: 0")
+        self.read_config()
         file_obj = Mock()
         file_obj.expects(once()).close()
         file_obj.expects(once()).write(

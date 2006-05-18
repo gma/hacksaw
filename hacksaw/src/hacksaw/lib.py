@@ -20,8 +20,12 @@ class Config(object):
         self.parser = ConfigParser.SafeConfigParser()
         self.parser.read(filename)
 
-    def _get_section(self):
-        return self.__class__.__module__
+    def _get_section(self, suffix=None):
+        section = self.__class__.__module__
+        if suffix is None:
+            return section
+        else:
+            return ".".join((section, suffix))
 
     def _get_item(self, item):
         try:

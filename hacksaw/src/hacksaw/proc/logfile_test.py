@@ -23,6 +23,7 @@ class LogfileTest(hacksaw.lib_test.ConfigTest):
         hacksaw.lib_test.ConfigTest.setUp(self)
         self.append_to_file("[hacksaw.proc.logfile]")
         self.append_to_file("logfile: %s" % LogfileTest.LOG_FILE)
+        self.read_config()
 
     def tearDown(self):
         hacksaw.lib_test.ConfigTest.tearDown(self)
@@ -106,6 +107,7 @@ class ConfigTest(LogfileTest):
         """Check we can get the path to the log file"""
         path = "/path/to/log/file"
         self.append_to_file("logfile: %s" % path)
+        self.read_config()
         self.assertEqual(self.config.log_file, path)
 
 

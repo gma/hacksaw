@@ -55,8 +55,7 @@ class Processor(hacksaw.lib.Processor):
         super(Processor, self).__init__(config)
         self._action_chain = None
         self.set_action_chain(
-            [SingleLineFilter, MultiLineFilter, MessageDispatcher]
-        )
+            [SingleLineFilter, MultiLineFilter, MessageDispatcher])
 
     def set_action_chain(self, action_classes):
         self._action_chain = ActionChain(self, action_classes)
@@ -104,7 +103,7 @@ class ActionChain(object):
         self.get_action(0).handle_message(message)
 
 
-class UnhandledMessageError(Exception):
+class UnhandledMessageError(RuntimeError):
 
     pass
 
@@ -191,12 +190,42 @@ class MessageDispatcher(Action):
         logger.send_packet(packet)
 
 
+class BadRuleName(RuntimeError):
+
+    pass
+
+
+def identify_rule(item):
+    match = re.match("(match|end)(.+)", item)
+    if match is None:
+        raise BadRuleName, item
+    rule_type, rule_id = match.groups()
+    return rule_type, rule_id
+
+
 class Config(hacksaw.lib.Config):
 
     FACILITY = "facility"
     HOSTS = "hosts"
     PRIORITY = "priority"
     IGNORE_PATTERNS = "ignore"
+    IGNORE_SECTION = "ignore"
+    RULE_START = "match"
+    RULE_END = "end"
+
+    def __init__(self, filename):
+        super(Config, self).__init__(filename)
+        self.ignore_rules = self._parse_ignore_rules()
+
+    def _parse_ignore_rules(self):
+        rules = {}
+        try:
+            for key, value in self.parser.items(self._get_ignore_section()):
+                rule_type, rule_id = identify_rule(key)
+                rules.setdefault(rule_id, {})[rule_type] = value
+        except ConfigParser.NoSectionError:
+            pass
+        return rules
 
     def _get_facility(self):
         name = self._get_item(Config.FACILITY)
@@ -222,11 +251,28 @@ class Config(hacksaw.lib.Config):
 
     hosts = property(_get_hosts)
 
+    def _get_ignore_section(self):
+        return self._get_section(self.IGNORE_SECTION)
+
     def _get_ignore_patterns(self):
-        try:
-            ignore_expression = self._get_item(Config.IGNORE_PATTERNS)
-            return eval(ignore_expression)
-        except ConfigParser.NoOptionError:
-            return []
+        patterns = []
+        for rule_id in self.ignore_rules.keys():
+            if self.RULE_START in self.ignore_rules[rule_id]:
+                rule = [self.ignore_rules[rule_id][self.RULE_START]]
+                if self.RULE_END in self.ignore_rules[rule_id]:
+                    rule.append(self.ignore_rules[rule_id][self.RULE_END])
+                patterns.append(tuple(rule))
+        return patterns
 
     ignore_patterns = property(_get_ignore_patterns)
+
+    def _get_item(self, item):
+        try:
+            if item.startswith(self.RULE_START) or \
+                   item.startswith(self.RULE_END):
+                section_name = self._get_ignore_section()
+            else:
+                section_name = self._get_section()
+            return self.parser.get(section_name, item)
+        except ConfigParser.NoSectionError, e:
+            raise ConfigError, e

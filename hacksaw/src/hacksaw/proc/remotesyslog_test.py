@@ -11,7 +11,7 @@ import hacksaw.lib_test
 import hacksaw.proc.remotesyslog
 
 
-class RemoteSyslogTest(hacksaw.lib_test.ConfigTest):
+class StandardConfigTest(hacksaw.lib_test.ConfigTest):
 
     config_cls = hacksaw.proc.remotesyslog.Config
 
@@ -20,41 +20,80 @@ class RemoteSyslogTest(hacksaw.lib_test.ConfigTest):
         self.append_to_file("[hacksaw.proc.remotesyslog]")
 
 
-class ConfigTest(RemoteSyslogTest):
+class BasicConfigTest(StandardConfigTest):
 
     def test_get_hosts(self):
         """Check we can get list of hosts to which we send syslog packets"""
         self.append_to_file("hosts: %s" % "localhost, otherhost")
+        self.read_config()
         self.assertEqual(self.config.hosts, ["localhost", "otherhost"])
 
     def test_get_facility(self):
         """Check we can get the syslog message facility"""
         self.append_to_file("facility: local0")
+        self.read_config()
         self.assertEqual(self.config.facility, syslog.LOG_LOCAL0)
 
     def test_get_priority(self):
         """Check we can get the syslog message priority"""
         self.append_to_file("priority: info")
+        self.read_config()
         self.assertEqual(self.config.priority, syslog.LOG_INFO)
 
     def test_error_priority(self):
         """Check priority 'error' converted to 'err'"""
         self.append_to_file("priority: error")
+        self.read_config()
         self.assertEqual(self.config.priority, syslog.LOG_ERR)
 
     def test_warning_priority(self):
         """Check priority 'warn' converted to 'warning'"""
         self.append_to_file("priority: warn")
+        self.read_config()
         self.assertEqual(self.config.priority, syslog.LOG_WARNING)
+
+
+class RuleNameTest(unittest.TestCase):
+
+    def test_identify_good_rule(self):
+        """Check we can analyse well named rules"""
+        rule_type, index = hacksaw.proc.remotesyslog.identify_rule("match1")
+        self.assertEqual(rule_type, "match")
+        self.assertEqual(index, "1")
+
+    def test_identify_bad_rule(self):
+        """Check we don't break when analysing badly named rules"""
+        self.assertRaises(hacksaw.proc.remotesyslog.BadRuleName,
+                          hacksaw.proc.remotesyslog.identify_rule, "wibble1")
+
+
+class IgnoreConfigTest(StandardConfigTest):
+
+    config_cls = hacksaw.proc.remotesyslog.Config
+
+    def setUp(self):
+        super(IgnoreConfigTest, self).setUp()
+        self.append_to_file("[hacksaw.proc.remotesyslog.ignore]")
+        self.append_to_file("match1: cat")
+        self.append_to_file("end1: dog")
+        self.append_to_file("match2: start")
+        self.append_to_file("end2: stop")
+        self.read_config()
+
+    def test_rule_parsing(self):
+        self.assert_(self.config.ignore_rules.has_key("1"))
+        self.assert_(self.config.ignore_rules.has_key("2"))
+        self.assertEqual(self.config.ignore_rules["1"]["match"], "cat")
 
     def test_get_ignore_patterns(self):
         """Check we can get the regexps for ignoring messages"""
-        self.append_to_file('ignore: [("cat", "dog"), ("start", "stop")]')
-        self.assertEqual(self.config.ignore_patterns, [("cat", "dog"),
-                                                       ("start", "stop")])
+        self.assertEqual(self.config.ignore_patterns,
+                         [("cat", "dog"), ("start", "stop")])
 
 
 class LogMessageTest(unittest.TestCase):
+
+    # TODO: move to hacksaw.lib (it's also used by other processors)
 
     def setUp(self):
         self.line = 'Jun 23 14:02:37 hoopoo ldap[29913]: Hello  world\n'
@@ -145,10 +184,11 @@ class ActionChainTest(unittest.TestCase):
             self.assertEquals(action.message, message)
 
 
-class ProcessorTest(RemoteSyslogTest):
+class ProcessorTest(StandardConfigTest):
 
     def test_get_process_only_name(self):
         """Check we can get the process name when there is no pid"""
+        self.read_config()
         processor = hacksaw.proc.remotesyslog.Processor(self.config)
         name, pid = processor.split_process_info("myproc")
         self.assertEqual(name, "myproc")
@@ -156,6 +196,7 @@ class ProcessorTest(RemoteSyslogTest):
         
     def test_get_process_name_and_pid(self):
         """Check we can get the process name and pid when both set"""
+        self.read_config()
         processor = hacksaw.proc.remotesyslog.Processor(self.config)
         name, pid = processor.split_process_info("myproc[123]")
         self.assertEqual(name, "myproc")
@@ -166,6 +207,7 @@ class ProcessorTest(RemoteSyslogTest):
         self.append_to_file("facility: daemon")
         self.append_to_file("priority: warn")
         self.append_to_file("hosts: localhost")
+        self.read_config()
         message = "Nov 22 08:59:54 myhost myproc[123]: Hello world!"
 
         class MockModule(object):
@@ -205,11 +247,13 @@ class ProcessorTest(RemoteSyslogTest):
             hacksaw.proc.remotesyslog.netsyslog = origmod
 
 
-class SingleLineFilterTest(RemoteSyslogTest):
+class SingleLineFilterTest(StandardConfigTest):
 
     def test_ignore_single_message(self):
         """Check SingleLineFilter handles a message specified to be ignored"""
-        self.append_to_file('ignore: [(".*yourhost.*",)]')
+        self.append_to_file("[hacksaw.proc.remotesyslog.ignore]")
+        self.append_to_file("match3: .*yourhost.*")
+        self.read_config()
         message = "Nov 22 08:59:54 yourhost myproc[123]: Hello world!"
         processor = hacksaw.proc.remotesyslog.Processor(self.config)
         processor.set_action_chain(
@@ -220,7 +264,7 @@ class SingleLineFilterTest(RemoteSyslogTest):
                           processor.handle_message, message)    
 
 
-class MultiLineFilterTest(RemoteSyslogTest):
+class MultiLineFilterTest(StandardConfigTest):
 
     def setUp(self):
         super(MultiLineFilterTest, self).setUp()
@@ -234,7 +278,10 @@ class MultiLineFilterTest(RemoteSyslogTest):
             def handle_message(self_, message):
                 self._dispatched_messages.append(message)
         
-        self.append_to_file('ignore: [(".*start.*", ".*end.*")]')
+        self.append_to_file("[hacksaw.proc.remotesyslog.ignore]")
+        self.append_to_file("match-stuff: .*start.*")
+        self.append_to_file("end-stuff: .*end.*")
+        self.read_config()
         messages = [
             "Nov 22 08:59:54 yourhost myproc[123]: Hello!",
             "Nov 22 08:59:55 yourhost myproc[123]: start!",

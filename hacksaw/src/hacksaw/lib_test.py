@@ -10,10 +10,12 @@ import hacksaw.lib
 
 class ConfigTest(unittest.TestCase):
 
-    config_cls = None
+    config_cls = None  # Must be set by the subclass.
 
     def append_to_file(self, line):
         file(self.filename, 'a').write(line + '\n')
+
+    def read_config(self):
         self.config = self.config_cls(self.filename)
 
     def setUp(self):
@@ -38,6 +40,7 @@ class GeneralConfigTest(ConfigTest):
         """Check we can read the spool directory from the config file"""
         self.append_to_file('[general]')
         self.append_to_file('spool: /var/spool/hacksaw')
+        self.read_config()
         self.assertEqual(self.config.spool_directory, '/var/spool/hacksaw')
 
     def test_get_processors(self):
@@ -45,6 +48,7 @@ class GeneralConfigTest(ConfigTest):
         self.append_to_file('[general]')
         self.append_to_file(
             'processors: hacksaw.proc.email, hacksaw.proc.syslog')
+        self.read_config()
         self.assertEqual(self.config.processors, ['hacksaw.proc.email',
                                                   'hacksaw.proc.syslog'])
     
