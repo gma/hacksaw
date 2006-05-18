@@ -34,7 +34,10 @@ def process_log_files(config):
     for log_file in os.listdir(config.spool_directory):
         for line in file(os.path.join(config.spool_directory, log_file)):
             for processor in processors:
-                processor.handle_message(line)
+                try:
+                    processor.handle_message(line)
+                except:
+                    traceback.print_exc()
         os.remove(os.path.join(config.spool_directory, log_file))
 
 
@@ -60,7 +63,8 @@ def main(argv=None):
         process_log_files(config)
     except Usage, e:
         print >>sys.stderr, e.msg
-        print >>sys.stderr, "processlogs.py -c"
+        progname = os.path.basename(sys.argv[0])
+        print >>sys.stderr, "%s -c <config-file>" % progname
         return 2
     except Exception, e:
         traceback.print_exc()

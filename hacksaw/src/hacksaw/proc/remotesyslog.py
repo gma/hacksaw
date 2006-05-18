@@ -135,9 +135,7 @@ class SingleLineFilter(Action):
         regexps = []
         for pattern_tuple in ignore_patterns:
             if len(pattern_tuple) == 1:
-                regexps.append(
-                    re.compile(pattern_tuple[0])
-                )
+                regexps.append(re.compile(pattern_tuple[0]))
         return regexps
 
     def handle_message(self, message):
@@ -152,19 +150,16 @@ class MultiLineFilter(Action):
     def __init__(self, processor, successor):
         super(MultiLineFilter, self).__init__(processor, successor)
         self._ignore_regexps = self._setup_regexps(
-            self._processor.config.ignore_patterns
-        )
+            self._processor.config.ignore_patterns)
         self._currently_ignored_loggers = {}
     
     def _setup_regexps(self, ignore_patterns):
-        """Extract and compile the multi-line ignore patterns"""
+        # Extract and compile the multi-line ignore patterns.
         regexps = []
         for pattern_tuple in ignore_patterns:
             if len(pattern_tuple) == 2:
-                regexps.append(
-                    (re.compile(pattern_tuple[0]),
-                     re.compile(pattern_tuple[1]))
-                )
+                regexps.append((re.compile(pattern_tuple[0]),
+                                re.compile(pattern_tuple[1])))
         return regexps
 
     def handle_message(self, message):
@@ -233,6 +228,5 @@ class Config(hacksaw.lib.Config):
             return eval(ignore_expression)
         except ConfigParser.NoOptionError:
             return []
-        
 
     ignore_patterns = property(_get_ignore_patterns)
