@@ -208,7 +208,6 @@ class Config(hacksaw.lib.Config):
     FACILITY = "facility"
     HOSTS = "hosts"
     PRIORITY = "priority"
-    IGNORE_PATTERNS = "ignore"
     IGNORE_SECTION = "ignore"
     RULE_START = "match"
     RULE_END = "end"
