@@ -195,14 +195,6 @@ class BadRuleName(RuntimeError):
     pass
 
 
-def identify_rule(item):
-    match = re.match("(match|end)(.+)", item)
-    if match is None:
-        raise BadRuleName, item
-    rule_type, rule_id = match.groups()
-    return rule_type, rule_id
-
-
 class Config(hacksaw.lib.Config):
 
     FACILITY = "facility"
@@ -216,11 +208,19 @@ class Config(hacksaw.lib.Config):
         super(Config, self).__init__(filename)
         self.ignore_rules = self._parse_ignore_rules()
 
+    @staticmethod
+    def identify_rule(item):
+        match = re.match("(match|end)(.+)", item)
+        if match is None:
+            raise BadRuleName, item
+        rule_type, rule_id = match.groups()
+        return rule_type, rule_id
+
     def _parse_ignore_rules(self):
         rules = {}
         try:
             for key, value in self.parser.items(self._get_ignore_section()):
-                rule_type, rule_id = identify_rule(key)
+                rule_type, rule_id = self.identify_rule(key)
                 rules.setdefault(rule_id, {})[rule_type] = value
         except ConfigParser.NoSectionError:
             pass
@@ -251,7 +251,7 @@ class Config(hacksaw.lib.Config):
     hosts = property(_get_hosts)
 
     def _get_ignore_section(self):
-        return self._get_section(self.IGNORE_SECTION)
+        return ".".join((self._get_section(), self.IGNORE_SECTION))
 
     def _get_ignore_patterns(self):
         patterns = []
@@ -274,4 +274,4 @@ class Config(hacksaw.lib.Config):
                 section_name = self._get_section()
             return self.parser.get(section_name, item)
         except ConfigParser.NoSectionError, e:
-            raise ConfigError, e
+            raise hacksaw.lib.ConfigError, e

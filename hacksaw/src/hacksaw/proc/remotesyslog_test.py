@@ -8,12 +8,12 @@ import unittest
 import pmock
 
 import hacksaw.lib_test
-import hacksaw.proc.remotesyslog
+import hacksaw.proc.remotesyslog as remotesyslog
 
 
 class StandardConfigTest(hacksaw.lib_test.ConfigTest):
 
-    config_cls = hacksaw.proc.remotesyslog.Config
+    config_cls = remotesyslog.Config
 
     def setUp(self):
         hacksaw.lib_test.ConfigTest.setUp(self)
@@ -57,19 +57,19 @@ class RuleNameTest(unittest.TestCase):
 
     def test_identify_good_rule(self):
         """Check we can analyse well named rules"""
-        rule_type, index = hacksaw.proc.remotesyslog.identify_rule("match1")
+        rule_type, index = remotesyslog.Config.identify_rule("match1")
         self.assertEqual(rule_type, "match")
         self.assertEqual(index, "1")
 
     def test_identify_bad_rule(self):
         """Check we don't break when analysing badly named rules"""
-        self.assertRaises(hacksaw.proc.remotesyslog.BadRuleName,
-                          hacksaw.proc.remotesyslog.identify_rule, "wibble1")
+        self.assertRaises(remotesyslog.BadRuleName,
+                          remotesyslog.Config.identify_rule, "wibble1")
 
 
 class IgnoreConfigTest(StandardConfigTest):
 
-    config_cls = hacksaw.proc.remotesyslog.Config
+    config_cls = remotesyslog.Config
 
     def setUp(self):
         super(IgnoreConfigTest, self).setUp()
@@ -100,28 +100,28 @@ class LogMessageTest(unittest.TestCase):
 
     def test_date(self):
         """Check we can extract the date from a log message"""
-        message = hacksaw.proc.remotesyslog.LogMessage(self.line)
+        message = remotesyslog.LogMessage(self.line)
         self.assertEqual(message.date, 'Jun 23 14:02:37')
 
     def test_date_single_figure_day(self):
         """Check we can extract the date when the day is a single digit"""
         line = 'Jun  1 14:02:37 hoopoo ldap[29913]: Hello  world\n'
-        message = hacksaw.proc.remotesyslog.LogMessage(line)
+        message = remotesyslog.LogMessage(line)
         self.assertEqual(message.date, 'Jun  1 14:02:37')
 
     def test_hostname(self):
         """Check we can extract the hostname from a log message"""
-        message = hacksaw.proc.remotesyslog.LogMessage(self.line)
+        message = remotesyslog.LogMessage(self.line)
         self.assertEqual(message.hostname, 'hoopoo')
 
     def test_process(self):
         """Check we can extract the process details from a log message"""
-        message = hacksaw.proc.remotesyslog.LogMessage(self.line)
+        message = remotesyslog.LogMessage(self.line)
         self.assertEqual(message.process, 'ldap[29913]')
         
     def test_message(self):
         """Check we can extract the text from a log message"""
-        message = hacksaw.proc.remotesyslog.LogMessage(self.line)
+        message = remotesyslog.LogMessage(self.line)
         self.assertEqual(message.text, 'Hello  world')
         
 
@@ -132,7 +132,7 @@ class ActionTestCase(unittest.TestCase):
         message = "Hello World!"
         successor = pmock.Mock()
         successor.expects(pmock.once()).handle_message(pmock.eq(message))
-        action = hacksaw.proc.remotesyslog.Action(None, successor)
+        action = remotesyslog.Action(None, successor)
         action.handle_message(message)
         successor.verify()
 
@@ -150,7 +150,7 @@ class ActionChainTest(unittest.TestCase):
 
         processor = pmock.Mock()
         action_classes = [FakeAction]
-        chain = hacksaw.proc.remotesyslog.ActionChain(processor,
+        chain = remotesyslog.ActionChain(processor,
                                                       action_classes)
         action = chain.get_action(0)
         self.assertEquals(action.processor, processor)
@@ -158,7 +158,7 @@ class ActionChainTest(unittest.TestCase):
     def test_actions_constructed_and_linked(self):
         """Check that the actions are linked correctly"""
 
-        class FakeAction(hacksaw.proc.remotesyslog.Action):
+        class FakeAction(remotesyslog.Action):
 
             def __init__(self, processor, successor):
                 self._successor = successor
@@ -175,8 +175,7 @@ class ActionChainTest(unittest.TestCase):
 
         action_classes = [FakeAction for idx in range(2)]
         action_classes.append(FakeTerminatingAction)
-        action_chain = hacksaw.proc.remotesyslog.ActionChain(pmock.Mock(),
-                                                             action_classes)
+        action_chain = remotesyslog.ActionChain(pmock.Mock(), action_classes)
         message = "One Two"
         action_chain.handle_message(message)
         for idx in range(3):
@@ -189,7 +188,7 @@ class ProcessorTest(StandardConfigTest):
     def test_get_process_only_name(self):
         """Check we can get the process name when there is no pid"""
         self.read_config()
-        processor = hacksaw.proc.remotesyslog.Processor(self.config)
+        processor = remotesyslog.Processor(self.config)
         name, pid = processor.split_process_info("myproc")
         self.assertEqual(name, "myproc")
         self.assertEqual(pid, None)
@@ -197,7 +196,7 @@ class ProcessorTest(StandardConfigTest):
     def test_get_process_name_and_pid(self):
         """Check we can get the process name and pid when both set"""
         self.read_config()
-        processor = hacksaw.proc.remotesyslog.Processor(self.config)
+        processor = remotesyslog.Processor(self.config)
         name, pid = processor.split_process_info("myproc[123]")
         self.assertEqual(name, "myproc")
         self.assertEqual(pid, 123)
@@ -232,10 +231,10 @@ class ProcessorTest(StandardConfigTest):
         mockmod.Packet = packet
 
         try:
-            origmod = hacksaw.proc.remotesyslog.netsyslog
-            hacksaw.proc.remotesyslog.netsyslog = mockmod
+            origmod = remotesyslog.netsyslog
+            remotesyslog.netsyslog = mockmod
             
-            processor = hacksaw.proc.remotesyslog.Processor(self.config)
+            processor = remotesyslog.Processor(self.config)
             processor.create_packet(message)
             
             self.assertEqual(pri.initargs,
@@ -244,7 +243,7 @@ class ProcessorTest(StandardConfigTest):
             self.assertEqual(msg.initargs, ("myproc", "Hello world!", 123))
             self.assertEqual(packet.initargs, (pri, header, msg))
         finally:
-            hacksaw.proc.remotesyslog.netsyslog = origmod
+            remotesyslog.netsyslog = origmod
 
 
 class SingleLineFilterTest(StandardConfigTest):
@@ -255,12 +254,12 @@ class SingleLineFilterTest(StandardConfigTest):
         self.append_to_file("match3: .*yourhost.*")
         self.read_config()
         message = "Nov 22 08:59:54 yourhost myproc[123]: Hello world!"
-        processor = hacksaw.proc.remotesyslog.Processor(self.config)
+        processor = remotesyslog.Processor(self.config)
         processor.set_action_chain(
-            [hacksaw.proc.remotesyslog.SingleLineFilter])
+            [remotesyslog.SingleLineFilter])
         processor.handle_message(message)
         message = "Nov 22 08:59:54 myhost myproc[123]: Hello world!"
-        self.assertRaises(hacksaw.proc.remotesyslog.UnhandledMessageError,
+        self.assertRaises(remotesyslog.UnhandledMessageError,
                           processor.handle_message, message)    
 
 
@@ -273,7 +272,7 @@ class MultiLineFilterTest(StandardConfigTest):
     def test_ingore_multiple_lines(self):
         """Check we can ignore groups of log messages"""
 
-        class MockDispatcher(hacksaw.proc.remotesyslog.Action):
+        class MockDispatcher(remotesyslog.Action):
 
             def handle_message(self_, message):
                 self._dispatched_messages.append(message)
@@ -291,11 +290,10 @@ class MultiLineFilterTest(StandardConfigTest):
             "Nov 22 08:59:57 yourhost myproc[123]: end!",
             "Nov 22 08:59:58 yourhost myproc[123]: Bye!"
         ]
-        processor = hacksaw.proc.remotesyslog.Processor(self.config)
-        processor.set_action_chain(
-            [hacksaw.proc.remotesyslog.SingleLineFilter,
-             hacksaw.proc.remotesyslog.MultiLineFilter,
-             MockDispatcher]
+        processor = remotesyslog.Processor(self.config)
+        processor.set_action_chain([remotesyslog.SingleLineFilter,
+                                    remotesyslog.MultiLineFilter,
+                                    MockDispatcher]
         )
         for message in messages:
             processor.handle_message(message)

@@ -101,27 +101,27 @@ class MessageSender(object):
         return True
 
     def _get_log_attachment(self):
-	log_messages = file(self.config.message_store, "r").read()
-	message = email.MIMEText.MIMEText(log_messages)
-	message.add_header('Content-Disposition', 'attachment',
+        log_messages = file(self.config.message_store, "r").read()
+        message = email.MIMEText.MIMEText(log_messages)
+        message.add_header('Content-Disposition', 'attachment',
                            filename='logs.txt')
-	return message
-	 
+        return message
+         
     def _get_message(self):
-	message = email.MIMEBase.MIMEBase('multipart', 'mixed')
-	message.epilogue = "" # guarantees ends in new line
-	message["From"] = self.config.sender
-	message["To"] = ', '.join(self.config.recipients)
-	message["Subject"] = self.config.subject
+        message = email.MIMEBase.MIMEBase('multipart', 'mixed')
+        message.epilogue = "" # guarantees ends in new line
+        message["From"] = self.config.sender
+        message["To"] = ', '.join(self.config.recipients)
+        message["Subject"] = self.config.subject
         message.attach(self._get_log_attachment())
-	return message
+        return message
 
     def send_message_too_large_error(self):
-	message = email.MIMEBase.MIMEBase('text', 'plain')
-	message.epilogue = "" # guarantees ends in new line
-	message["From"] = self.config.sender
-	message["To"] = ', '.join(self.config.recipients)
-	message["Subject"] = "Hacksaw error: Message store is too large"
+        message = email.MIMEBase.MIMEBase('text', 'plain')
+        message.epilogue = "" # guarantees ends in new line
+        message["From"] = self.config.sender
+        message["To"] = ', '.join(self.config.recipients)
+        message["Subject"] = "Hacksaw error: Message store is too large"
         message_str = message.as_string(unixfrom=0)
         fd = os.popen(self.config.mail_command, 'w')
         fd.write(message_str)

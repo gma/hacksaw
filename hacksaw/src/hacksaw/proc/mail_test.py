@@ -148,11 +148,11 @@ class ConfigTest(MailTest):
 class MessageSenderTest(MailTest):
     
     def setUp(self):
-	MailTest.setUp(self)
-	dirname = os.path.dirname(MailTest.MESSAGE_STORE)
+        MailTest.setUp(self)
+        dirname = os.path.dirname(MailTest.MESSAGE_STORE)
         if not os.path.exists(dirname):
             os.makedirs(dirname)
-	file(MailTest.MESSAGE_STORE, "a").write("Error: Example Message\n")
+        file(MailTest.MESSAGE_STORE, "a").write("Error: Example Message\n")
 
     def test_address_validity_when_valid(self):
         """Check we allow valid addresses"""
@@ -180,10 +180,10 @@ class MessageSenderTest(MailTest):
         
         self.real_os = hacksaw.proc.mail.os
         hacksaw.proc.mail.os = mock_os
-	return mock_os
+        return mock_os
 
     def _remove_mock_pipe(self):
-	hacksaw.proc.mail.os = self.real_os
+        hacksaw.proc.mail.os = self.real_os
 
     def test_use_correct_mail_command(self):
         """Check that the correct mail command is used to send mail"""
@@ -192,15 +192,15 @@ class MessageSenderTest(MailTest):
         file_obj = Mock()
         file_obj.expects(once()).method("close")
         file_obj.expects(once()).method("write")
-	mock_os = self._setup_mock_pipe(file_obj)
+        mock_os = self._setup_mock_pipe(file_obj)
         mock_os.expects(once()).remove(eq(MailTest.MESSAGE_STORE))
         try:
             sender = hacksaw.proc.mail.MessageSender(self.config)
             sender.send_message()
-	    file_obj.verify()
+            file_obj.verify()
             mock_os.verify()
         finally:
-	    self._remove_mock_pipe()
+            self._remove_mock_pipe()
         
     def test_log_attachment(self):
         """Check that the log messages are attached to the mail"""
@@ -209,16 +209,16 @@ class MessageSenderTest(MailTest):
         file_obj = Mock()
         file_obj.expects(once()).close()
         file_obj.expects(once()).write(
-	    string_contains("Error: Example Message"))
-	mock_os = self._setup_mock_pipe(file_obj)
+            string_contains("Error: Example Message"))
+        mock_os = self._setup_mock_pipe(file_obj)
         mock_os.expects(once()).remove(eq(MailTest.MESSAGE_STORE))
         try:
             sender = hacksaw.proc.mail.MessageSender(self.config)
             sender.send_message()
-	    file_obj.verify()
+            file_obj.verify()
             mock_os.verify()
         finally:
-	    self._remove_mock_pipe()
+            self._remove_mock_pipe()
 
     def test_deletion(self):
         """Check message store deleted if mail sent"""
@@ -227,16 +227,16 @@ class MessageSenderTest(MailTest):
         file_obj = Mock()
         file_obj.expects(once()).method("close").will(return_value(None))
         file_obj.expects(once()).write(
-	    string_contains("Error: Example Message"))
-	mock_os = self._setup_mock_pipe(file_obj)
+            string_contains("Error: Example Message"))
+        mock_os = self._setup_mock_pipe(file_obj)
         mock_os.expects(once()).remove(eq(MailTest.MESSAGE_STORE))
         try:
             sender = hacksaw.proc.mail.MessageSender(self.config)
             sender.send_message()
-	    file_obj.verify()
+            file_obj.verify()
             mock_os.verify()
         finally:
-	    self._remove_mock_pipe()
+            self._remove_mock_pipe()
 
     def test_unsuccessful_send(self):
         """Check message store not deleted if mail not sent"""
@@ -245,18 +245,18 @@ class MessageSenderTest(MailTest):
         file_obj = Mock()
         file_obj.expects(once()).method("close").will(return_value(1))
         file_obj.expects(once()).write(
-	    string_contains("Error: Example Message"))
-	mock_os = self._setup_mock_pipe(file_obj)
+            string_contains("Error: Example Message"))
+        mock_os = self._setup_mock_pipe(file_obj)
         sys.stderr = Mock()
         sys.stderr.expects(once()).write(string_contains("Error:"))
         try:
             sender = hacksaw.proc.mail.MessageSender(self.config)
             sender.send_message()
-	    file_obj.verify()
+            file_obj.verify()
             mock_os.verify()
             self.assert_(os.path.exists(MailTest.MESSAGE_STORE))
         finally:
-	    self._remove_mock_pipe()
+            self._remove_mock_pipe()
             sys.stderr = sys.__stderr__
 
 
@@ -274,10 +274,10 @@ class SendErrorTest(MessageSenderTest):
         
         self.real_os = hacksaw.proc.mail.os
         hacksaw.proc.mail.os = mock_os
-	return mock_os
+        return mock_os
 
     def _remove_mock_pipe(self):
-	hacksaw.proc.mail.os = self.real_os
+        hacksaw.proc.mail.os = self.real_os
 
     def test_message_store_too_large(self):
         """Check error message is sent if message store too large"""
@@ -286,15 +286,15 @@ class SendErrorTest(MessageSenderTest):
         file_obj = Mock()
         file_obj.expects(once()).close()
         file_obj.expects(once()).write(
-	    string_contains("Subject: Hacksaw error:"))
-	mock_os = self._setup_mock_pipe(file_obj)
+            string_contains("Subject: Hacksaw error:"))
+        mock_os = self._setup_mock_pipe(file_obj)
         try:
             sender = hacksaw.proc.mail.MessageSender(self.config)
             sender.send_message()
-	    file_obj.verify()
+            file_obj.verify()
             mock_os.verify()
         finally:
-	    self._remove_mock_pipe()
+            self._remove_mock_pipe()
 
 
 if __name__ == '__main__':
