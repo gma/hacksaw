@@ -81,6 +81,7 @@ class IgnoreConfigTest(StandardConfigTest):
         self.read_config()
 
     def test_rule_parsing(self):
+        """Check we can parse the ignore rules"""
         self.assert_(self.config.ignore_rules.has_key("1"))
         self.assert_(self.config.ignore_rules.has_key("2"))
         self.assertEqual(self.config.ignore_rules["1"]["match"], "cat")

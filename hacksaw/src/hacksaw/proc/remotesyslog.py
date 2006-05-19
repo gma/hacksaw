@@ -91,8 +91,8 @@ class ActionChain(object):
         actions = []
         reversed_classes = reversed(action_classes)
         successor = None
-        for class_ in reversed_classes:
-            successor = class_(processor, successor)
+        for cls in reversed_classes:
+            successor = cls(processor, successor)
             actions.insert(0, successor)
         return actions
 
@@ -116,8 +116,8 @@ class Action(object):
 
     def handle_message(self, message):
         if self._successor is None:
-            raise UnhandledMessageError('The message "%s" was not handled' %
-                                        message)
+            raise UnhandledMessageError(
+                'The message "%s" was not handled' % message)
         self._successor.handle_message(message)
 
 
@@ -125,21 +125,20 @@ class SingleLineFilter(Action):
 
     def __init__(self, processor, successor):
         super(SingleLineFilter, self).__init__(processor, successor)
-        self._ignore_regexps = self._setup_regexps(
-            self._processor.config.ignore_patterns
-        )
+        self._ignore_regexes = self._setup_regexes(
+            self._processor.config.ignore_patterns)
 
-    def _setup_regexps(self, ignore_patterns):
+    def _setup_regexes(self, ignore_patterns):
         """Extract and compile the single-line ignore patterns"""
-        regexps = []
+        regexes = []
         for pattern_tuple in ignore_patterns:
             if len(pattern_tuple) == 1:
-                regexps.append(re.compile(pattern_tuple[0]))
-        return regexps
+                regexes.append(re.compile(pattern_tuple[0]))
+        return regexes
 
     def handle_message(self, message):
-        for regexp in self._ignore_regexps:
-            if regexp.match(message):
+        for regex in self._ignore_regexes:
+            if regex.match(message):
                 return
         super(SingleLineFilter, self).handle_message(message)
 
@@ -148,18 +147,18 @@ class MultiLineFilter(Action):
 
     def __init__(self, processor, successor):
         super(MultiLineFilter, self).__init__(processor, successor)
-        self._ignore_regexps = self._setup_regexps(
+        self._ignore_regexes = self._setup_regexes(
             self._processor.config.ignore_patterns)
         self._currently_ignored_loggers = {}
     
-    def _setup_regexps(self, ignore_patterns):
+    def _setup_regexes(self, ignore_patterns):
         # Extract and compile the multi-line ignore patterns.
-        regexps = []
+        regexes = []
         for pattern_tuple in ignore_patterns:
             if len(pattern_tuple) == 2:
-                regexps.append((re.compile(pattern_tuple[0]),
-                                re.compile(pattern_tuple[1])))
-        return regexps
+                start, end = pattern_tuple
+                regexes.append((re.compile(start), re.compile(end)))
+        return regexes
 
     def handle_message(self, message):
         log = LogMessage(message)
@@ -169,10 +168,9 @@ class MultiLineFilter(Action):
                 del self._currently_ignored_loggers[logger_id]
             return
         else:
-            for ignore_tuple in self._ignore_regexps:
-                if ignore_tuple[0].match(message):
-                    self._currently_ignored_loggers[logger_id] = \
-                                                               ignore_tuple[1]
+            for start_regex, end_regex in self._ignore_regexes:
+                if start_regex.match(message):
+                    self._currently_ignored_loggers[logger_id] = end_regex
                     return
         super(MultiLineFilter, self).handle_message(message)
 
