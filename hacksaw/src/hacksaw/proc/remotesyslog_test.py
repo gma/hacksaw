@@ -74,7 +74,7 @@ class IgnoreConfigTest(StandardConfigTest):
     def setUp(self):
         super(IgnoreConfigTest, self).setUp()
         self.append_to_file("[hacksaw.proc.remotesyslog.ignore]")
-        self.append_to_file("match1: cat")
+        self.append_to_file(r"match1: \bcat")
         self.append_to_file("end1: dog")
         self.append_to_file("match2: start")
         self.append_to_file("end2: stop")
@@ -84,12 +84,12 @@ class IgnoreConfigTest(StandardConfigTest):
         """Check we can parse the ignore rules"""
         self.assert_(self.config.ignore_rules.has_key("1"))
         self.assert_(self.config.ignore_rules.has_key("2"))
-        self.assertEqual(self.config.ignore_rules["1"]["match"], "cat")
+        self.assertEqual(self.config.ignore_rules["1"]["match"], r"\bcat")
 
     def test_get_ignore_patterns(self):
         """Check we can get the regexps for ignoring messages"""
         self.assertEqual(self.config.ignore_patterns,
-                         [("cat", "dog"), ("start", "stop")])
+                         [(r"\bcat", "dog"), ("start", "stop")])
 
 
 class LogMessageTest(unittest.TestCase):
@@ -279,17 +279,17 @@ class MultiLineFilterTest(StandardConfigTest):
                 self._dispatched_messages.append(message)
         
         self.append_to_file("[hacksaw.proc.remotesyslog.ignore]")
-        self.append_to_file("match-stuff: .*start.*")
-        self.append_to_file("end-stuff: .*end.*")
+        self.append_to_file(r"match-stuff: .*start.*")
+        self.append_to_file(r"end-stuff: .*last line\b")
         self.read_config()
         messages = [
             "Nov 22 08:59:54 yourhost myproc[123]: Hello!",
             "Nov 22 08:59:55 yourhost myproc[123]: start!",
             "Nov 22 08:59:56 yourhost myproc[123]: middle!",
             "Nov 22 08:59:56 myhost myproc[123]: middle!",
-            "Nov 22 08:59:56 yourhost myproc[321]: middle!",
-            "Nov 22 08:59:57 yourhost myproc[123]: end!",
-            "Nov 22 08:59:58 yourhost myproc[123]: Bye!"
+            "Nov 22 08:59:56 yourhost myproc[321]: not last line_",
+            "Nov 22 08:59:57 yourhost myproc[123]: last line this time",
+            "Nov 22 08:59:58 yourhost myproc[123]: Bye!",
         ]
         processor = remotesyslog.Processor(self.config)
         processor.set_action_chain([remotesyslog.SingleLineFilter,
