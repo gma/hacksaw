@@ -138,7 +138,7 @@ class SingleLineFilter(Action):
 
     def handle_message(self, message):
         for regex in self._ignore_regexes:
-            if regex.match(message):
+            if regex.search(message):
                 return
         super(SingleLineFilter, self).handle_message(message)
 
@@ -164,12 +164,12 @@ class MultiLineFilter(Action):
         log = LogMessage(message)
         logger_id = (log.hostname, log.process)
         if logger_id in self._currently_ignored_loggers:
-            if self._currently_ignored_loggers[logger_id].match(message):
+            if self._currently_ignored_loggers[logger_id].search(message):
                 del self._currently_ignored_loggers[logger_id]
             return
         else:
             for start_regex, end_regex in self._ignore_regexes:
-                if start_regex.match(message):
+                if start_regex.search(message):
                     self._currently_ignored_loggers[logger_id] = end_regex
                     return
         super(MultiLineFilter, self).handle_message(message)

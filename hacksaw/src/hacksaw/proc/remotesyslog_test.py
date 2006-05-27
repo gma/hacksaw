@@ -252,12 +252,11 @@ class SingleLineFilterTest(StandardConfigTest):
     def test_ignore_single_message(self):
         """Check SingleLineFilter handles a message specified to be ignored"""
         self.append_to_file("[hacksaw.proc.remotesyslog.ignore]")
-        self.append_to_file("match3: .*yourhost.*")
+        self.append_to_file("match3: yourhost")
         self.read_config()
         message = "Nov 22 08:59:54 yourhost myproc[123]: Hello world!"
         processor = remotesyslog.Processor(self.config)
-        processor.set_action_chain(
-            [remotesyslog.SingleLineFilter])
+        processor.set_action_chain([remotesyslog.SingleLineFilter])
         processor.handle_message(message)
         message = "Nov 22 08:59:54 myhost myproc[123]: Hello world!"
         self.assertRaises(remotesyslog.UnhandledMessageError,
@@ -279,10 +278,10 @@ class MultiLineFilterTest(StandardConfigTest):
                 self._dispatched_messages.append(message)
         
         self.append_to_file("[hacksaw.proc.remotesyslog.ignore]")
-        self.append_to_file(r"match-stuff: .*start.*")
-        self.append_to_file(r"end-stuff: .*last line\b")
+        self.append_to_file(r"match-stuff: start")
+        self.append_to_file(r"end-stuff: last line\b")
         self.read_config()
-        messages = [
+        lines = [
             "Nov 22 08:59:54 yourhost myproc[123]: Hello!",
             "Nov 22 08:59:55 yourhost myproc[123]: start!",
             "Nov 22 08:59:56 yourhost myproc[123]: middle!",
@@ -294,12 +293,10 @@ class MultiLineFilterTest(StandardConfigTest):
         processor = remotesyslog.Processor(self.config)
         processor.set_action_chain([remotesyslog.SingleLineFilter,
                                     remotesyslog.MultiLineFilter,
-                                    MockDispatcher]
-        )
-        for message in messages:
-            processor.handle_message(message)
-        expected_dispatched = [messages[0], messages[3], messages[4],
-                               messages[6]]
+                                    MockDispatcher])
+        for line in lines:
+            processor.handle_message(line)
+        expected_dispatched = [lines[0], lines[3], lines[4], lines[6]]
         self.assertEquals(self._dispatched_messages, expected_dispatched)
 
 
