@@ -133,6 +133,14 @@ pull_log()
 }
 
 
+fix_localhost()
+{
+    local log_file=$1
+    hostname=$(basename ${log_file%%-*})
+    perl -p -i -e "s/^(([^ ]+ ){3})localhost/\${1}$hostname/" $log_file
+}
+
+
 ## Main program
 
 [ -n "$DEBUG" ] && set -x
@@ -159,4 +167,5 @@ REMOTEHOST=$1
 files=$(list_remote_files)
 for log_file in $files; do
     pull_log $log_file
+    fix_localhost $log_file
 done
